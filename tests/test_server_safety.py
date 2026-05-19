@@ -132,6 +132,124 @@ def test_load_data_passes_delegation_context(monkeypatch) -> None:
     ]
 
 
+def test_validate_data_passes_delegation_context(monkeypatch) -> None:
+    server = importlib.import_module("airlock_mcp.server")
+    calls = []
+
+    def fake_call(procedure, args=None):
+        calls.append((procedure, args))
+        return {"ok": True}
+
+    monkeypatch.setattr(server, "_call", fake_call)
+
+    server.airlock_validate_data(
+        "timesheets",
+        file_content="employee,hours\njoe,8",
+        on_behalf_of_user="joe",
+        delegation_id="D123",
+    )
+
+    assert calls == [
+        (
+            "airlock.user.validate_data",
+            [
+                "timesheets",
+                None,
+                "employee,hours\njoe,8",
+                None,
+                None,
+                True,
+                "joe",
+                "D123",
+            ],
+        )
+    ]
+
+
+def test_workflow_passes_delegation_context(monkeypatch) -> None:
+    server = importlib.import_module("airlock_mcp.server")
+    calls = []
+
+    def fake_call(procedure, args=None):
+        calls.append((procedure, args))
+        return {"ok": True}
+
+    monkeypatch.setattr(server, "_call", fake_call)
+
+    server.airlock_edit_file_workflow(
+        "timesheets",
+        "joe",
+        "joe_timesheet",
+        "advance",
+        comment="Submitted by agent",
+        on_behalf_of_user="joe",
+        delegation_id="D123",
+    )
+
+    assert calls == [
+        (
+            "airlock.user.edit_file_workflow",
+            [
+                "timesheets",
+                "joe",
+                "joe_timesheet",
+                "advance",
+                "Submitted by agent",
+                True,
+                None,
+                True,
+                "joe",
+                "D123",
+            ],
+        )
+    ]
+
+
+def test_replace_attachment_passes_delegation_context(monkeypatch) -> None:
+    server = importlib.import_module("airlock_mcp.server")
+    calls = []
+
+    def fake_call(procedure, args=None):
+        calls.append((procedure, args))
+        return {"ok": True}
+
+    monkeypatch.setattr(server, "_call", fake_call)
+
+    server.airlock_replace_attachment(
+        "timesheets",
+        "joe",
+        "joe_timesheet",
+        "A123",
+        attachment_content_base64="YWJj",
+        attachment_filename="corrected.txt",
+        attachment_tag="receipt",
+        on_behalf_of_user="joe",
+        delegation_id="D123",
+    )
+
+    assert calls == [
+        (
+            "airlock.user.replace_attachment",
+            [
+                "timesheets",
+                "joe",
+                "joe_timesheet",
+                "A123",
+                None,
+                "YWJj",
+                "corrected.txt",
+                "other",
+                None,
+                None,
+                True,
+                "receipt",
+                "joe",
+                "D123",
+            ],
+        )
+    ]
+
+
 def test_delegation_tools_use_user_procedures(monkeypatch) -> None:
     server = importlib.import_module("airlock_mcp.server")
     calls = []

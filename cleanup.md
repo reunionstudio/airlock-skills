@@ -2,7 +2,7 @@
 
 ## Variables
 
-- `last_improve_dependency_sync_at`: `2026-05-18`
+- `last_improve_dependency_sync_at`: `2026-05-19`
 - `last_improve_cleanup_pass_at`: `null`
 - `last_improve_coverage_pass_at`: `null`
 
@@ -21,3 +21,7 @@
   delegation, license, work-item, and expectation procedure names against
   upstream Airlock wrappers, kept upstream app-object-name guidance, and added
   the same caveat to the Cortex quickstart and skill.
+- 2026-05-19: Synced current upstream delegation docs and moved-guide redirects,
+  verified delegated `validate_data`, `replace_attachment`, and
+  `edit_file_workflow` signatures against Airlock procedure wrappers, and
+  updated MCP tools/tests to pass delegated context for those procedures.

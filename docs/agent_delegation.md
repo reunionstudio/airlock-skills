@@ -1,9 +1,9 @@
 # Agent Delegation Design
 
-This document defines the proposed Airlock contract for user-to-agent delegation.
-It is a design document, not a shipped API reference. Do not treat the procedure
-names here as available until `docs/airlock_api_v1.md` and the installed
-documentation expose them.
+This document defines Airlock's user-to-agent delegation model. The shipped API
+reference remains `docs/airlock_api_v1.md` and the installed
+`airlock.user.documentation(...)` output; use this document for design rationale,
+security rules, and implementation intent.
 
 ## Summary
 
@@ -50,25 +50,36 @@ The conservative default is:
 - The principal must be visible in delegated result context and events.
 - Ambiguous delegation grants fail instead of guessing.
 
-## Initial Action Set
+## Delegable Action Set
 
-Recommended phase-one delegated actions:
+Supported delegated actions:
 
 | Action | Include first? | Reason |
 | --- | --- | --- |
 | `validate_data` | Yes | Read/validation planning, no mutation. |
 | `load_data` | Yes | Primary use case: agent submits a user's file. |
 | `add_attachment` | Yes | Needed for reimbursements/timesheets with evidence. |
-| `replace_attachment` | Later | It is permanent in Airlock and needs clearer policy. |
+| `edit_file_workflow` | Explicit only | Workflow movement is available only when the spec policy and grant both allow it for the current step. |
+| `replace_attachment` | Explicit only | Permanent attachment replacement is available only when the spec policy and grant both allow it. |
 | `delete_files` | No | Destructive and not needed for first submission workflows. |
 | `delete_attachment` | No | Destructive and not needed for first submission workflows. |
-| workflow submit transition | Later | Useful, but should be action-scoped by workflow policy. |
 | workflow approval/rejection | No | Governance decision, not a simple delegated submission. |
+| `admin.*` procedures | Never | Admin APIs are control-plane authority and are not delegable. |
 | spec/admin operations | No | Too broad for user-to-agent delegation. |
 
 The reimbursement demo follows this split: Deb can be seeded as asmith's delegate
 for `validate_data`, `load_data`, and `add_attachment`, but submit/review/approval
 workflow transitions are intentionally outside the grant.
+
+Delegation action names are `user.*` procedure actions only. Admin procedures
+may create, list, or revoke delegation records as control-plane operations, but
+no `airlock.admin.*` procedure can be executed through `on_behalf_of_user`.
+
+If a delegate also has direct Airlock roles, direct role authority remains
+separate from delegation. A workflow transition that succeeds without
+`on_behalf_of_user` is a direct user action, not delegated work. Agents should
+use `on_behalf_of_user` for delegated file validation/load/attachment/workflow
+calls and report direct workflow actions separately.
 
 ## Spec Configuration
 
@@ -79,7 +90,7 @@ their own work, but delegated calls must not borrow or merge those roles. At
 runtime Airlock re-checks the principal user's current access to the spec; if
 the principal loses access, the delegation stops authorizing work.
 
-Proposed config shape:
+Spec config shape:
 
 ```json
 {
@@ -109,7 +120,7 @@ Field meanings:
 
 - `enabled`: explicit opt-in for the spec. Default is `false`.
 - `allowed_actions`: delegable Airlock actions for this spec.
-- `principal_scope`: which users may be principals. Initial value should be
+- `principal_scope`: which users may be principals. Supported value:
   `assigned_users`.
 - `workflow_step_actions`: optional per-step narrowing of delegable actions. If
   present, global `allowed_actions` is only the outer allowlist; the step must
@@ -120,7 +131,14 @@ Field meanings:
 
 Use this for submit-style workflows: a spec admin can allow an agent to prepare
 files and attachments while the file is in `Draft`, but keep `Draft -> Submitted`
-or later approval transitions non-delegatable.
+or later approval transitions non-delegatable. If the spec should allow delegated
+workflow movement, include `edit_file_workflow` in both the global
+`allowed_actions` and the matching `workflow_step_actions` row.
+
+`admin.validate_spec` validates this policy before save/create. `allowed_actions`
+and per-step `allowed_actions` must be arrays of known user procedure actions;
+admin procedure names are rejected; per-step actions may only narrow the global
+allowlist; `workflow_step_actions` must match configured workflow steps.
 
 ## Delegation Record
 
@@ -198,12 +216,16 @@ CALL airlock.user.list_my_delegations('both');     -- default overview
 
 `received` is the agent-oriented lens. It returns `DELEGATION_ID`,
 `PRINCIPAL_USER`, `ALLOWED_ACTIONS`, and a structured `ACTION_CONTEXT` object so
-an agent can call delegated procedures with `on_behalf_of_user` and
-`delegation_id` without querying broad admin-only metadata.
+an agent can call delegated procedures with `on_behalf_of_user` without querying
+broad admin-only metadata. `delegation_id` is an advanced disambiguator only
+when more than one active grant matches.
+
+Airlock SQL APIs are stored procedures. Agents should use `CALL
+airlock.user...`; `SELECT * FROM TABLE(...)` is not the procedure call form.
 
 ### Delegated User Actions
 
-Delegated action procedures should add two optional trailing parameters:
+Delegated action procedures use two optional trailing parameters:
 
 ```text
 on_behalf_of_user VARCHAR DEFAULT NULL,
@@ -213,24 +235,79 @@ delegation_id VARCHAR DEFAULT NULL
 Example:
 
 ```sql
+CALL airlock.user.validate_data(
+  spec_name => 'timesheets',
+  file_content => :csv,
+  on_behalf_of_user => 'joe'
+);
+
 CALL airlock.user.load_data(
   spec_name => 'timesheets',
-  path => NULL,
   file_content => :csv,
   filename => 'joe_timesheet_2026_05_17',
-  in_app_role => 'timesheet_agent',
-  path_scope => NULL,
-  attachment_content_base64 => NULL,
-  attachment_filename => NULL,
-  include_managed_roles => TRUE,
-  on_behalf_of_user => 'joe',
-  delegation_id => 'D123'
+  on_behalf_of_user => 'joe'
+);
+
+CALL airlock.user.add_attachment(
+  spec_name => 'timesheets',
+  file_path => 'joe',
+  file_filename => 'joe_timesheet_2026_05_17',
+  attachment_content_base64 => :receipt_base64,
+  attachment_filename => 'receipt.png',
+  on_behalf_of_user => 'joe'
+);
+
+CALL airlock.user.replace_attachment(
+  spec_name => 'timesheets',
+  file_path => 'joe',
+  file_filename => 'joe_timesheet_2026_05_17',
+  attachment_id => '...',
+  attachment_content_base64 => :receipt_base64,
+  attachment_filename => 'corrected_receipt.png',
+  on_behalf_of_user => 'joe'
+);
+
+CALL airlock.user.edit_file_workflow(
+  spec_name => 'timesheets',
+  path => 'joe',
+  filename => 'joe_timesheet_2026_05_17',
+  action => 'advance',
+  comment => 'Submitted by agent',
+  on_behalf_of_user => 'joe'
 );
 ```
 
+For inline CSV, omit `path`; `path` is only for staged file paths. For delegated
+calls, Airlock resolves the principal user's folder/lens before checking the
+delegation. `add_attachment` is for follow-up evidence on an existing file; pass
+the file path and filename returned by the delegated load, and keep passing
+`on_behalf_of_user`. If a follow-up mutation omits `on_behalf_of_user`, Airlock
+evaluates it as a direct actor call, which may correctly fail against the
+actor's own isolated directory. When `load_data` includes
+`attachment_content_base64`, that call already registers the first attachment;
+use a distinct `attachment_tag` for any extra follow-up evidence, or skip the
+follow-up attachment. `replace_attachment` is permanent and requires an explicit
+`replace_attachment` action in both the spec policy and the active grant.
+`edit_file_workflow` also requires direct workflow/PDP permission for the
+principal and an explicit `edit_file_workflow` grant at the file's current
+workflow step. Only pass `path_scope` when deliberately targeting a non-default
+shared/public scope.
+
 `delegation_id` can be optional only when exactly one active grant matches the
-actor, principal, spec, role lens, and action. If more than one active grant
-matches, return `AMBIGUOUS_DELEGATION`.
+actor, principal, spec, path lens, and action. If more than one active grant
+matches, return `AMBIGUOUS_DELEGATION`; then the caller may retry with
+`delegation_id`.
+
+If a delegation has `path_scope`, runtime authorization treats it as a hard
+scope limit. The requested staged path or inline `path_scope` must resolve to
+the same value; otherwise the grant does not match.
+
+Delegation denials are table-shaped whenever the delegated user procedure has a
+fixed return schema. `validate_data` and `load_data` return `STATUS = 'error'`
+with one `ISSUES` entry containing the stable delegation code. Attachment
+procedures return `STATUS = 'error'` with `CODE` set to the delegation code.
+Workflow movement returns `STATUS = 'error'` with the code inside
+`VALIDATION.issues`. Agents should branch on those codes, not parse prose.
 
 ## PDP Contract
 
@@ -327,6 +404,7 @@ Denials should use stable codes:
 - `DELEGATION_REVOKED`
 - `AMBIGUOUS_DELEGATION`
 - `DELEGATION_PRINCIPAL_ACCESS_DENIED`
+- `INVALID_DELEGATION_POLICY`
 
 ## UI Contract
 
@@ -359,14 +437,21 @@ settings should list active delegations both directions:
 
 ## MCP and Agent Skill Contract
 
-MCP tools should add `on_behalf_of_user` and `delegation_id` only to tools that
-support delegation. Tool descriptions must say the call remains audited as the
-actor acting for the principal.
+MCP tools should expose `on_behalf_of_user` on tools that support delegation.
+`delegation_id`, `path_scope`, and role/path lenses are advanced overrides, not
+the default call shape. Tool descriptions must say the call remains audited as
+the actor acting for the principal.
 
 Agent skills should instruct agents:
 
 - never log in as the principal
-- use Airlock delegation parameters
+- pass `on_behalf_of_user` for delegated work
+- keep passing `on_behalf_of_user` on every follow-up delegated mutation; omitting
+  it changes the call back to direct actor mode
+- use `list_my_work_items` only for direct-role workflow work; delegated workflow
+  work should be discovered from `list_my_delegations` and the delegated
+  procedure results
+- treat workflow transitions without `on_behalf_of_user` as direct-role actions
 - report delegated results as "Submitted as Deb for Joe"
 - preserve delegation denial codes
 

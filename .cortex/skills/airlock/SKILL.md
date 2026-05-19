@@ -107,10 +107,11 @@ instead of logging in as the principal user. Report delegated work as actor
 acting for principal, for example `Submitted as Deb for Joe`.
 
 Only pass delegation parameters to procedures that support delegated actions,
-such as `load_data` and `add_attachment` in the current user API. Preserve
-delegation denial codes plus actor, principal, and delegation id in structured
-output. Do not use delegated destructive or governance actions unless installed
-docs and spec policy explicitly allow them.
+such as `validate_data`, `load_data`, `add_attachment`, `replace_attachment`,
+and `edit_file_workflow` in the current user API. Preserve delegation denial
+codes plus actor, principal, and delegation id in structured output. Do not use
+delegated destructive or governance actions unless installed docs and spec
+policy explicitly allow them.
 
 # Flexible Variant Fields
 

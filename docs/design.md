@@ -93,9 +93,11 @@ contract.
 Delegation support follows [agent_delegation.md](agent_delegation.md). The MCP
 server exposes only the installed user-safe delegation contract:
 `airlock.user.create_delegation`, `airlock.user.list_my_delegations`, and
-delegated `load_data` / `add_attachment` parameters. Tool responses must
-preserve actor user, principal user, and delegation id instead of summarizing
-delegated work as direct user action.
+the `on_behalf_of_user` / `delegation_id` parameters on delegated user actions.
+Tools must keep `on_behalf_of_user` on every follow-up delegated mutation,
+including attachment and workflow calls; omitting it changes the call back to
+direct actor mode. Tool responses must preserve actor user, principal user, and
+delegation id instead of summarizing delegated work as direct user action.
 
 ## Install and Storage Permissions
 

@@ -97,7 +97,8 @@ For proposed user-to-agent delegation semantics, see
 [docs/agent_delegation.md](docs/agent_delegation.md). The MCP server exposes the
 current user-safe delegation surface from installed Airlock docs:
 `airlock_create_delegation`, `airlock_list_my_delegations`, and delegated
-`airlock_load_data` / `airlock_add_attachment` context.
+`airlock_validate_data`, `airlock_load_data`, `airlock_add_attachment`,
+`airlock_replace_attachment`, and `airlock_edit_file_workflow` context.
 
 ## Status
 

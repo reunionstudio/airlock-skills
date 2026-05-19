@@ -8,6 +8,12 @@ The goal is simple: make Airlock easy for agents to use while keeping Airlock's
 Snowflake stored procedures as the source of truth for permissions, validation,
 audit, retention, billing, and workflow.
 
+Public toolkit repo:
+[github.com/reunionstudio/airlock-tools](https://github.com/reunionstudio/airlock-tools).
+It includes Airlock agent docs, MCP server guidance, quickstarts, release
+artifacts, and maintenance guidance for keeping agent tooling aligned with the
+installed Airlock procedure API.
+
 ## Positioning
 
 Airlock is a policy-enforcing ingestion layer. Agents and MCP servers should use
@@ -131,6 +137,8 @@ expectations, create delegations, or automate governed ingestion into Snowflake.
 Airlock is the policy-enforcing ingestion layer. Do not write directly to
 Airlock-owned stages, hybrid tables, secure views, or generated replacement
 apps. Use installed Airlock stored procedures and preserve structured outputs.
+Airlock SQL APIs are stored procedures: use `CALL`, not
+`SELECT * FROM TABLE(...)`.
 
 # First Steps
 
@@ -139,9 +147,9 @@ apps. Use installed Airlock stored procedures and preserve structured outputs.
    `CALL airlock.user.documentation(CONTENT_MODE => 'PROCEDURES');`
 3. List the caller's Airlock roles:
    `CALL airlock.user.list_my_roles();`
-4. Use `airlock.user.list_my_specs(in_app_role)` and
-   `airlock.user.describe_spec(spec_name, in_app_role)` before choosing any
-   load, validate, attachment, workflow, or reference call.
+4. Use `airlock.user.list_my_specs(in_app_role, include_managed_roles)` and
+   `airlock.user.describe_spec(spec_name, in_app_role, include_managed_roles)`
+   before choosing any load, validate, attachment, workflow, or reference call.
 
 # Safe Procedure Pattern
 
@@ -153,9 +161,18 @@ For data submission:
 4. Only if validation succeeds, call `airlock.user.load_data(...)`.
 5. If the spec requires attachments, include `attachment_content_base64` and
    `attachment_filename` in `load_data`, or use `add_attachment` afterward when
-   the policy allows it.
+   the policy allows it. A `load_data` call with inline attachment content
+   already registers that first attachment; add later evidence with a distinct
+   `attachment_tag`.
 6. Report `STATUS`, `CODE`, `MESSAGE`, `ISSUES`, returned path, filename, and
    workflow state.
+
+For inline CSV, omit `path`; `path` is only for staged file paths. Use
+`path_scope` only when the caller is directly choosing a shared/public folder
+such as `public/full_access`. For delegated inline calls, pass
+`on_behalf_of_user`; Airlock resolves the principal's folder. Role-lensed
+validation, including FK or mapped-reference checks, uses the principal lens for
+delegated calls and the caller lens for direct calls.
 
 # Safety
 
@@ -211,8 +228,8 @@ with user-safe tools, then add admin tools behind explicit configuration.
 
 | Tool | Maps to | Purpose |
 | --- | --- | --- |
-| `airlock_list_specs` | `airlock.user.list_my_specs(in_app_role)` | List specs accessible to the caller. |
-| `airlock_describe_spec` | `airlock.user.describe_spec(spec_name, in_app_role)` | Return fields, tests, file rules, workflow, attachments, path scopes, and reference guidance. |
+| `airlock_list_specs` | `airlock.user.list_my_specs(in_app_role, include_managed_roles)` | List specs accessible to the caller. |
+| `airlock_describe_spec` | `airlock.user.describe_spec(spec_name, in_app_role, include_managed_roles)` | Return fields, tests, file rules, workflow, attachments, path scopes, and reference guidance. |
 | `airlock_select_reference_data` | `airlock.user.select_reference_data(...)` | Read approved reference-spec data for validation/planning. |
 
 ### File and Data Tools
@@ -233,7 +250,7 @@ preserve Airlock's own dry-run output.
 | Tool | Maps to | Purpose |
 | --- | --- | --- |
 | `airlock_list_work_items` | `airlock.user.list_my_work_items(...)` | List files that can be moved through workflow. |
-| `airlock_edit_file_workflow` | `airlock.user.edit_file_workflow(...)` | Move a file to an allowed workflow state. |
+| `airlock_edit_file_workflow` | `airlock.user.edit_file_workflow(...)` | Move a file to an allowed workflow state; supports `on_behalf_of_user` only when explicitly delegated by spec policy and grant. |
 | `airlock_list_file_references` | `airlock.user.list_file_references(...)` | Inspect source-link pins between files. |
 | `airlock_add_file_reference` | `airlock.user.add_file_reference(...)` | Pin eligible upstream files for downstream validation. |
 | `airlock_remove_file_reference` | `airlock.user.remove_file_reference(...)` | Remove a file reference pin. |
@@ -246,9 +263,9 @@ workflow.
 
 | Tool | Maps to | Purpose |
 | --- | --- | --- |
-| `airlock_add_attachment` | `airlock.user.add_attachment(...)` | Attach evidence to an existing file. |
-| `airlock_replace_attachment` | `airlock.user.replace_attachment(...)` | Replace a logical attachment tag. |
-| `airlock_delete_attachment` | `airlock.user.delete_attachment(...)` | Delete an attachment where allowed. |
+| `airlock_add_attachment` | `airlock.user.add_attachment(...)` | Attach evidence to an existing file; supports `on_behalf_of_user` for delegated follow-up attachments. |
+| `airlock_replace_attachment` | `airlock.user.replace_attachment(...)` | Replace a logical attachment tag; supports `on_behalf_of_user` only when the spec policy and grant explicitly allow `replace_attachment`. |
+| `airlock_delete_attachment` | `airlock.user.delete_attachment(...)` | Delete an attachment where allowed; direct-role destructive action. |
 
 Attachment replace/delete should be described as permanent in Airlock unless a
 tested restore contract is added later.
@@ -417,7 +434,8 @@ tools perform delegated work through stored procedures.
 Keep delegation mappings aligned with installed Airlock procedure names:
 `airlock.user.create_delegation`, `airlock.user.list_my_delegations`, and the
 trailing `on_behalf_of_user` / `delegation_id` parameters on delegated user
-actions such as `load_data` and `add_attachment`.
+actions such as `validate_data`, `load_data`, `add_attachment`,
+`replace_attachment`, and `edit_file_workflow`.
 
 When a human asks to set up their agent, use:
 
@@ -443,9 +461,30 @@ future, expired, or revoked delegations.
 For active received rows:
 
 - pass `PRINCIPAL_USER` as `on_behalf_of_user`
-- pass `DELEGATION_ID` as `delegation_id`
+- use the same delegation arguments for `validate_data`, `load_data`, follow-up `add_attachment`, explicitly allowed `replace_attachment`, and explicitly allowed `edit_file_workflow`
+- keep passing `on_behalf_of_user` on every follow-up delegated mutation; if it is omitted, Airlock treats the call as direct actor work and evaluates the actor's own path access
+- omit `path`, `in_app_role`, and `path_scope` for normal delegated inline loads; Airlock resolves the principal's folder
+- remember that inline attachments passed to `load_data` are already registered; use a new `attachment_tag` for extra evidence added later
+- pass `DELEGATION_ID` as `delegation_id` only if Airlock reports an ambiguous delegation
 - prefer structured `ACTION_CONTEXT` when available
 - preserve actor, principal, and delegation id in output
+
+Delegation is a `user.*` procedure feature only. MCP tools must not expose
+`on_behalf_of_user` on `admin.*` tools, and they should reject prompts that try
+to run an admin procedure under a delegation.
+
+Spec creation/editing should rely on `admin.validate_spec` for
+`delegation_policy` correctness. The policy allowlists must be arrays of known
+delegable `user.*` actions. Admin action names are invalid, and per-step
+workflow actions may only narrow the spec-level allowlist.
+
+Workflow movement is delegated only when the spec `delegation_policy` and the
+active grant both include `edit_file_workflow` for the file's current workflow
+step. If an agent also has direct Airlock roles, a successful
+`user.edit_file_workflow` call without `on_behalf_of_user` is still a direct
+action, not delegated work. Likewise, `user.list_my_work_items` lists
+direct-role workflow visibility; a delegated file load does not make the
+principal's workflow items appear there.
 
 Do not ask the agent to log in as the principal user.
 
@@ -463,7 +502,11 @@ Joe submitted the file.
 
 Preserve delegation denial codes such as `DELEGATION_NOT_FOUND`,
 `DELEGATION_EXPIRED`, `DELEGATION_REVOKED`, `DELEGATION_PRINCIPAL_ACCESS_DENIED`,
-or `AMBIGUOUS_DELEGATION`.
+`INVALID_DELEGATION_POLICY`, or `AMBIGUOUS_DELEGATION`.
+Delegated `validate_data` and `load_data` denials appear as `STATUS = 'error'`
+rows with a stable code in `ISSUES`; delegated attachment denials set `CODE`;
+delegated workflow denials set `VALIDATION.issues`. Agent tools should expose
+those structured fields directly.
 
 ## Safety Rules
 

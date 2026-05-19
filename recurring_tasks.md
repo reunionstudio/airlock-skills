@@ -23,7 +23,7 @@ For future `@improve` runs:
 
 ## Tracked variables
 
-- `last_improve_dependency_sync_at`: `2026-05-18`
+- `last_improve_dependency_sync_at`: `2026-05-19`
 - `last_improve_cleanup_pass_at`: `null`
 - `last_improve_coverage_pass_at`: `null`
 

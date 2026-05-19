@@ -222,8 +222,10 @@ def airlock_validate_data(
     in_app_role: str | None = None,
     path_scope: str | None = None,
     include_managed_roles: bool = True,
+    on_behalf_of_user: str | None = None,
+    delegation_id: str | None = None,
 ) -> dict[str, Any]:
-    """Validate candidate data through Airlock without writing a file."""
+    """Validate candidate data through Airlock, optionally as a delegated actor."""
     procedure = "airlock.user.validate_data"
     blocked = _validate_one_content_source(procedure, path, file_content)
     if blocked:
@@ -233,7 +235,16 @@ def airlock_validate_data(
         return blocked
     return _call(
         procedure,
-        [spec_name, path, file_content, in_app_role, path_scope, include_managed_roles],
+        [
+            spec_name,
+            path,
+            file_content,
+            in_app_role,
+            path_scope,
+            include_managed_roles,
+            on_behalf_of_user,
+            delegation_id,
+        ],
     )
 
 
@@ -374,10 +385,13 @@ def airlock_edit_file_workflow(
     validate_only: bool = True,
     in_app_role: str | None = None,
     include_managed_roles: bool = True,
+    on_behalf_of_user: str | None = None,
+    delegation_id: str | None = None,
 ) -> dict[str, Any]:
     """Validate or apply a workflow transition for a file.
 
     Defaults to validate_only=true. Set validate_only=false to move the file.
+    Delegated workflow requires installed Airlock policy and grant support.
     """
     return _call(
         "airlock.user.edit_file_workflow",
@@ -390,6 +404,8 @@ def airlock_edit_file_workflow(
             validate_only,
             in_app_role,
             include_managed_roles,
+            on_behalf_of_user,
+            delegation_id,
         ],
     )
 
@@ -455,8 +471,10 @@ def airlock_replace_attachment(
     in_app_role: str | None = None,
     include_managed_roles: bool = True,
     attachment_tag: str | None = None,
+    on_behalf_of_user: str | None = None,
+    delegation_id: str | None = None,
 ) -> dict[str, Any]:
-    """Replace an existing attachment. This is permanent unless Airlock adds restore support."""
+    """Replace an attachment, optionally as a delegated actor. Replacement is permanent."""
     procedure = "airlock.user.replace_attachment"
     if bool(attachment_stage_path) == bool(attachment_content_base64):
         return blocked_result(
@@ -482,6 +500,8 @@ def airlock_replace_attachment(
             in_app_role,
             include_managed_roles,
             attachment_tag,
+            on_behalf_of_user,
+            delegation_id,
         ],
     )
 
@@ -544,8 +564,9 @@ def submit_file_to_airlock(spec_name: str, in_app_role: str | None = None) -> st
         "Use the public Airlock docs site only for product context and examples. First call "
         "airlock_describe_spec to inspect fields, accessible paths, workflow, "
         "and attachment policy. If acting under delegation, call "
-        "airlock_list_my_delegations('received') and preserve the principal and "
-        "delegation id. Then call airlock_validate_data with the exact "
+        "airlock_list_my_delegations('received') and pass on_behalf_of_user "
+        "for delegated validation, loading, and follow-up mutations. Then call "
+        "airlock_validate_data with the exact "
         "CSV content or staged path. Only call airlock_load_data after validation "
         "succeeds. If attachment_required is true, include attachment_content_base64 "
         "and attachment_filename in the load call. Return the structured Airlock "
