@@ -5,15 +5,11 @@ work.
 
 ## Procedure Path
 
-1. Discover the installed expectation procedure surface:
-   ```sql
-   CALL airlock.user.documentation(CONTENT_MODE => 'PROCEDURES');
-   ```
-2. List the caller's Airlock roles:
+1. List the caller's Airlock roles:
    ```sql
    CALL airlock.user.list_my_roles();
    ```
-3. For user-visible expectation status:
+2. For user-visible expectation status:
    ```sql
    CALL airlock.user.list_my_expectation_work('<spec_name>', '<airlock_role>', TRUE);
    ```
@@ -25,7 +21,7 @@ work.
      include_managed_roles=true
    )
    ```
-4. If the user asks to move files through workflow, list work items before
+3. If the user asks to move files through workflow, list work items before
    editing:
    ```sql
    CALL airlock.user.list_my_work_items('<spec_name>', '<airlock_role>', TRUE);
@@ -39,13 +35,13 @@ work.
      '<airlock_role>'
    );
    ```
-5. Only call `edit_file_workflow` with `validate_only => FALSE` after the user
+4. Only call `edit_file_workflow` with `validate_only => FALSE` after the user
    approves the transition.
 
 ## Report
 
 Explain expectation status as business activity status, not data-shape
-validation. Include expectation name, spec name, milestone, enforcement mode,
+validation. Include expectation name, spec name, milestone, strictness,
 status, due time, matching file count, exception count, available actions, and
 Airlock reason codes.
 
@@ -58,3 +54,6 @@ Use plain operational language:
   Airlock returned.
 - `exception_applied`: explain that an approved exception is affecting the
   expected action or enforcement result.
+
+Only call `airlock.user.documentation(CONTENT_MODE => 'PROCEDURES')` if the
+installed expectation procedure surface is uncertain.

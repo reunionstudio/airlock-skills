@@ -1,42 +1,38 @@
-# Airlock Tools
+# Airlock Skills and MCP Tools
 
-Airlock Tools is a public toolkit for helping AI agents use Airlock safely. It
-includes a thin Model Context Protocol server, Snowflake Cortex Code skills,
-maintenance/drift guidance, and docs for working with Airlock's Snowflake stored
-procedure API.
+Airlock Skills and MCP Tools helps AI agents use Airlock safely. The repo
+publishes one canonical Airlock skill directory plus a thin MCP server for
+Airlock's Snowflake stored procedure API.
 
-The MCP server component is designed for agents that need to discover specs,
-validate CSV content, load governed files, inspect files, manage workflow, and
-manage attachments without bypassing Airlock authorization, validation,
-workflow, or audit contracts. It calls documented `airlock.user.*` procedures
-and does not query or write Airlock-owned hybrid tables, secure views, or stages
-directly.
+The core rule is simple: agents should use documented Airlock procedures and
+preserve structured results. They should not write directly to Airlock-owned
+stages, hybrid tables, secure views, generated views, generated tables, or
+replacement apps.
 
-Examples assume the installed app object is named `airlock`. If an account uses
-a different app name, set `AIRLOCK_APPLICATION_NAME`.
+## What Is Here
 
-The Cortex Code skill teaches agents the same safe workflow when they have
-Snowflake SQL tools instead of MCP tools: discover installed docs, distinguish
-Snowflake roles from Airlock roles, describe specs, validate before loading, and
-preserve structured Airlock results.
+- `airlock_skills/`: the canonical Airlock skill directory. It contains
+  `SKILL.md`, references, examples, and templates.
+- `src/airlock_mcp/`: a user-safe MCP server for documented `airlock.user.*`
+  procedure workflows.
+- `docs/`: design, release, MCP, delegation, install/security, and Airlock
+  architecture guidance.
+- `tests/`: unit tests for procedure call construction, result normalization,
+  safety gates, and delegation parameters.
 
 ## Quickstart
 
-Choose the path that matches your agent environment:
+Use the skill by importing or copying the `airlock_skills/` directory into your
+agent's skill system. Each AI tool is responsible for its own skill-import
+mechanics; this repo does not maintain provider-specific mirrors.
 
-- **MCP server**: use when Claude Desktop, Cursor, Codex, OpenClaw, or another
-  MCP-compatible host should call typed Airlock tools. Start with
-  [docs/quickstart-mcp.md](docs/quickstart-mcp.md).
-- **Cortex Code skill**: use when Snowflake Cortex Code should call Airlock
-  stored procedures directly through Snowflake SQL tools. Start with
-  [docs/quickstart-cortex.md](docs/quickstart-cortex.md).
-- **Both**: use the skill for Airlock workflow guidance and the MCP server for
-  typed tool calls.
+Use the MCP server when an agent host can call MCP tools directly. Start with
+[docs/quickstart-mcp.md](docs/quickstart-mcp.md).
 
-The first release is intended to be installed from GitHub and, after package
-publication, run as a Python package named `airlock-tools`.
+Install from GitHub Releases today. After package publication, run the MCP
+server as the Python package named `airlock-skills`.
 
-Documentation source priority:
+## Documentation Source Priority
 
 1. Installed Airlock docs from `airlock.user.documentation(...)` for exact
    procedure contracts and the active app version.
@@ -46,14 +42,19 @@ Documentation source priority:
    for spec modeling examples and reusable business-object patterns.
 
 For the upstream combined agent/tooling guide synced from Airlock, see
-[docs/airlock-tools.md](docs/airlock-tools.md).
+[docs/airlock-skills.md](docs/airlock-skills.md).
 
-Architecture premise: in an Airlock-oriented agent architecture, Snowflake is
-the direct system of record for governed business outputs, not merely a
-downstream analytics warehouse where data lands after another app creates the
-official record.
+## Architecture Premise
 
-Role boundaries:
+In an Airlock-oriented agent architecture, Snowflake is the direct system of
+record for governed business outputs, not merely a downstream analytics
+warehouse where data lands after another app creates the official record.
+
+Airlock is the governance layer between adaptive work and the system of record:
+it defines specs, validation, workflow, attachments, references, expectations,
+roles, delegation, and governed procedure boundaries.
+
+## Role Boundaries
 
 - Snowflake roles and Snowflake application roles control the session and which
   installed app procedures can be called.
@@ -68,7 +69,7 @@ Role boundaries:
   managed child roles when procedures support managed-role expansion. The child
   does not automatically inherit the manager role's access.
 
-Install and Native App setup:
+## Install And Native App Setup
 
 - Airlock Marketplace listing:
   [Reunion Studio Airlock](https://app.snowflake.com/marketplace/listing/GZTSZ1QRFJ6L/reunion-studio-airlock).
@@ -82,34 +83,7 @@ Install and Native App setup:
   later, rename the retained database first. A fresh install needs to create and
   own a database named exactly `AIRLOCK_DATA`.
 
-For background on how MCP relates to Airlock's database-native procedure API,
-see [docs/mcp_ai_agents_airlock_procedures.md](docs/mcp_ai_agents_airlock_procedures.md).
-For Snowflake Cortex Code skill guidance, see
-[docs/airlock_cortex_code_skill_guide.md](docs/airlock_cortex_code_skill_guide.md)
-and the repo-local skill under [.cortex/skills/airlock](.cortex/skills/airlock).
-The skill also includes an Airlock architecture playbook reference for product
-context and agent-oriented business architecture.
-For MCP and Cortex Code examples used as benchmarks for this repo, see
-[docs/reference_benchmarks.md](docs/reference_benchmarks.md).
-For maintenance checks after Airlock app upgrades, see the repo-local skill under
-[.cortex/skills/airlock-tooling-maintenance](.cortex/skills/airlock-tooling-maintenance).
-For proposed user-to-agent delegation semantics, see
-[docs/agent_delegation.md](docs/agent_delegation.md). The MCP server exposes the
-current user-safe delegation surface from installed Airlock docs:
-`airlock_create_delegation`, `airlock_list_my_delegations`, and delegated
-`airlock_validate_data`, `airlock_load_data`, `airlock_add_attachment`,
-`airlock_replace_attachment`, and `airlock_edit_file_workflow` context.
-
-## Status
-
-This repository is a new public scaffold. The initial toolkit includes:
-
-- A user-safe Airlock MCP server.
-- A repo-local Airlock Cortex Code skill.
-- A maintenance skill for detecting Airlock API drift.
-- Snowflake CLI usage guidance.
-- Design docs for MCP, CoCo skills, delegation, install/security, and
-  agent-oriented Airlock architecture.
+## MCP Status
 
 The initial MCP surface focuses on user-safe workflows:
 
@@ -133,38 +107,17 @@ Delegated load and attachment calls preserve Airlock's structured actor,
 principal, and delegation context. The MCP server does not expose delegated
 destructive or governance actions.
 
-## Using the Toolkit
-
-Use the pieces that match the agent environment:
-
-- Use the MCP server when an agent host can call typed MCP tools.
-- Use the Cortex Code skill when an agent has Snowflake SQL tools but not MCP.
-- Use the maintenance skill to check whether a newer Airlock install changed
-  procedure signatures, docs, delegation behavior, or expected agent workflows.
-- Use the docs as agent-facing guidance, not as a replacement for installed
-  Airlock documentation.
-
-The MCP server is configured from the host environment or a named Snowflake
-connection profile. Prefer key-pair authentication for automation users. See
-[docs/quickstart-mcp.md](docs/quickstart-mcp.md) for consumer setup and
-[docs/development.md](docs/development.md) for contributor commands and tests.
-
 ## Implementation Choice
 
 The current MCP server is implemented in Python because Airlock is a
 Snowflake-native product and Python has mature Snowflake connector support. MCP
-does not require Python, though. A Node implementation would also be reasonable
-if distribution through JavaScript package managers or a TypeScript-first agent
+does not require Python. A Node implementation would also be reasonable if
+distribution through JavaScript package managers or a TypeScript-first agent
 stack becomes more important.
 
 The important contract is not the runtime. It is that tools remain thin wrappers
 around documented Airlock stored procedures and preserve structured Airlock
 results.
-
-Snowflake-managed MCP can also expose Snowflake stored procedures as generic MCP
-tools. Airlock Tools adds an Airlock-specific typed layer: safer defaults,
-workflow prompts, resource naming, result normalization, delegation context, and
-agent guidance for specs, roles, attachments, expectations, and workflow.
 
 ## Versioning
 
@@ -179,19 +132,15 @@ Use GitHub Releases and SemVer tags for this repo:
 - Call out the minimum supported Airlock stored procedure API version when a
   release depends on a new installed Airlock contract.
 
-The first public init commit should be tagged `v0.1.0` once the staged scaffold
-is committed.
-
 ## Distribution
 
-- GitHub is the source of truth for docs, skills, source, tests, and releases.
+- GitHub is the source of truth for docs, the canonical skill, source, tests,
+  and releases.
 - GitHub Releases and tags provide stable install targets.
-- The Python package name is `airlock-tools`; the MCP server command is
-  `airlock-mcp` with `airlock-tools-mcp` as an alias.
-- Cortex Code users can add the repo-local skills from `.cortex/skills` or from
-  a released Git tag.
-- Customer teams may publish the skill directory to a Snowflake stage when they
-  want Snowflake-role-controlled distribution.
+- The Python package name is `airlock-skills`; the MCP server command is
+  `airlock-mcp` with `airlock-skills-mcp` as an alias.
+- Agent users install the skill by importing or copying `airlock_skills/` into
+  their own agent's skill system.
 - Code, docs, skills, examples, and templates are licensed under Apache-2.0.
 
 ## Tool Contract
@@ -212,9 +161,9 @@ Every Airlock procedure tool returns a consistent object:
 ```
 
 Procedure failures remain structured. The server preserves returned `STATUS`,
-`CODE`, `MESSAGE`, `ISSUES`, identifiers, workflow state, validation details, and
-result rows. Connector exceptions are sanitized to avoid leaking secrets, private
-key paths, or stack traces.
+`CODE`, `MESSAGE`, `ISSUES`, identifiers, workflow state, validation details,
+and result rows. Connector exceptions are sanitized to avoid leaking secrets,
+private key paths, or stack traces.
 
 ## Safety Boundaries
 
@@ -232,9 +181,5 @@ key paths, or stack traces.
 
 See [docs/design.md](docs/design.md) for the server boundary and MVP workflow
 map. See [docs/mcp_ai_agents_airlock_procedures.md](docs/mcp_ai_agents_airlock_procedures.md)
-for the conceptual MCP and agent integration overview.
-See [docs/airlock_cortex_code_skill_guide.md](docs/airlock_cortex_code_skill_guide.md)
-for the Cortex Code skill packaging guide.
-Use [.cortex/skills/airlock-tooling-maintenance](.cortex/skills/airlock-tooling-maintenance)
-to review installed Airlock API drift and decide whether this MCP server or the
-skills need updates.
+for the conceptual MCP and agent integration overview. For shipped user-to-agent
+delegation semantics, see [docs/agent_delegation.md](docs/agent_delegation.md).

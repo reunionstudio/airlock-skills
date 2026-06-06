@@ -3,11 +3,8 @@
 For the broader explanation of why an MCP adapter is useful, and why Airlock
 stored procedures remain the source of truth, see
 [mcp_ai_agents_airlock_procedures.md](mcp_ai_agents_airlock_procedures.md).
-For Cortex Code skill packaging, see
-[airlock_cortex_code_skill_guide.md](airlock_cortex_code_skill_guide.md).
-For external MCP and Cortex Code benchmarks, see
-[reference_benchmarks.md](reference_benchmarks.md).
-For proposed user-to-agent delegation semantics, see
+For the canonical Airlock skill, see the top-level `airlock_skills/` directory.
+For shipped user-to-agent delegation semantics, see
 [agent_delegation.md](agent_delegation.md).
 
 ## Positioning
@@ -48,11 +45,11 @@ directly.
 
 ## Reference Benchmarks
 
-Airlock Tools should be compatible with the patterns agents already see in
+Airlock Skills should be compatible with the patterns agents already see in
 Snowflake and MCP ecosystems:
 
-- Cortex Code skills are `SKILL.md` instruction packages with focused examples
-  and optional tool configuration.
+- Airlock skills are plain `SKILL.md` instruction packages with focused examples
+  and optional references/templates.
 - Snowflake-managed MCP can expose generic stored procedure tools when direct
   procedure invocation is enough.
 - This server adds Airlock-specific behavior: typed tool names, safe defaults,

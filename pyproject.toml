@@ -3,9 +3,9 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "airlock-tools"
+name = "airlock-skills"
 version = "0.2.0"
-description = "Agent tools for Airlock, including an MCP server for Airlock's Snowflake stored procedure API."
+description = "Agent skills and MCP tools for Airlock's Snowflake stored procedure API."
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
@@ -25,14 +25,14 @@ classifiers = [
   "Topic :: Database",
   "Topic :: Software Development :: Libraries :: Python Modules",
 ]
-keywords = ["airlock", "mcp", "snowflake", "agents", "cortex-code"]
+keywords = ["airlock", "mcp", "snowflake", "agents", "skills"]
 license = "Apache-2.0"
 
 [project.urls]
-Homepage = "https://github.com/reunionstudio/airlock-tools"
+Homepage = "https://github.com/reunionstudio/airlock-skills"
 Documentation = "https://reunionstudio.io/airlock/docs/index.html"
-Repository = "https://github.com/reunionstudio/airlock-tools"
-Issues = "https://github.com/reunionstudio/airlock-tools/issues"
+Repository = "https://github.com/reunionstudio/airlock-skills"
+Issues = "https://github.com/reunionstudio/airlock-skills/issues"
 
 [project.optional-dependencies]
 dev = [
@@ -42,7 +42,7 @@ dev = [
 
 [project.scripts]
 airlock-mcp = "airlock_mcp.server:main"
-airlock-tools-mcp = "airlock_mcp.server:main"
+airlock-skills-mcp = "airlock_mcp.server:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/airlock_mcp"]

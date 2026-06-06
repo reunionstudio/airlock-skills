@@ -5,14 +5,13 @@ Airlock template.
 
 ## Preferred User Path
 
-1. Discover installed procedures and Airlock roles:
+1. List Airlock roles:
    ```sql
-   CALL airlock.user.documentation(CONTENT_MODE => 'PROCEDURES');
    CALL airlock.user.list_my_roles();
    ```
-2. Inspect available templates using installed documentation for the current API.
-   If user-facing template-list procedures are not installed, explain that an
-   app admin may need to inspect template assignments.
+2. Use `references/spec-design.md` and the provided templates to draft narrow
+   overrides. If user-facing template-list procedures are not installed, explain
+   that an app admin may need to inspect template assignments.
 3. Prepare override values from the user's request. Keep overrides narrow.
    Use stable typed columns for durable business facts. When the user needs
    future flexibility for evolving context, add or request a `variant` column
@@ -52,3 +51,6 @@ typed columns.
 When the installed Airlock API supports it, pair the variant column with a
 `variant_shape` rule. Admins can later alter the spec config to permit and
 validate new nested keys without changing the physical table shape.
+
+Only call `airlock.user.documentation(CONTENT_MODE => 'PROCEDURES')` when the
+installed app's exact create-from-template signature is uncertain.

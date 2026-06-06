@@ -1,9 +1,8 @@
 # Development
 
-This page is for contributors working on the local Airlock Tools repo. General
+This page is for contributors working on the local Airlock Skills repo. General
 users should start with the README, [quickstart-mcp.md](quickstart-mcp.md),
-[quickstart-cortex.md](quickstart-cortex.md), and the installed Airlock
-documentation.
+and the installed Airlock documentation.
 
 ## Install
 
@@ -55,7 +54,7 @@ automation users.
 uv run airlock-mcp
 ```
 
-The package also exposes `airlock-tools-mcp` as an alias for the same server.
+The package also exposes `airlock-skills-mcp` as an alias for the same server.
 
 For MCP Inspector development:
 
@@ -67,10 +66,15 @@ uv run mcp dev src/airlock_mcp/server.py --with-editable .
 
 ```bash
 uv run --extra dev ruff check .
-uv run --extra dev pytest
+uv run --extra dev python -m pytest
 git diff --check
 ```
 
 The current tests cover procedure call construction, structured result
 normalization, exception sanitization, safety gates, and delegation argument
 mapping.
+
+## Skill Directory
+
+`airlock_skills/` is the canonical user-facing Airlock skill. Do not add
+provider-specific mirrors unless there is a real current integration requirement.

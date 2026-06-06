@@ -1,18 +1,17 @@
-# Airlock Tools for AI Agents
+# Airlock Skills for AI Agents
 
 This guide combines the Airlock MCP server guidance and the Airlock AI-agent
-skill guidance into one neutral reference. It applies to Codex, Claude,
-OpenClaw, Snowflake-hosted agents, MCP clients, and future AI assistants.
+skill guidance into one neutral reference for agent systems.
 
 The goal is simple: make Airlock easy for agents to use while keeping Airlock's
 Snowflake stored procedures as the source of truth for permissions, validation,
 audit, retention, billing, and workflow.
 
 Public toolkit repo:
-[github.com/reunionstudio/airlock-tools](https://github.com/reunionstudio/airlock-tools).
-It includes Airlock agent docs, MCP server guidance, quickstarts, release
-artifacts, and maintenance guidance for keeping agent tooling aligned with the
-installed Airlock procedure API.
+[github.com/reunionstudio/airlock-skills](https://github.com/reunionstudio/airlock-skills).
+It includes the canonical Airlock skill, MCP server guidance, docs, release
+artifacts, and tests for keeping agent tooling aligned with the installed
+Airlock procedure API.
 
 ## Positioning
 
@@ -83,37 +82,35 @@ The server may be Python, Node, or another runtime. Each tool should map to one
 documented Airlock operation or a small transparent sequence of documented
 operations.
 
+When a tool uses Snowflake CLI instead of a driver, prefer:
+
+```bash
+snow sql -c <connection> --format JSON_EXT --silent \
+  -q "CALL airlock.user.documentation(CONTENT_MODE => 'PROCEDURES');"
+```
+
+`JSON_EXT` is the recommended agent format because it preserves Airlock VARIANT
+columns such as `PAYLOAD`, `VALIDATION`, and `ISSUES` as nested JSON objects.
+Plain `JSON` can serialize those values as strings. `TABLE` is appropriate for
+human demos and Makefile logs, but agents should not scrape table art.
+
 ## Agent Skill Shape
 
-An Airlock skill teaches an agent the workflow and safety model. It may be
-packaged for any agent ecosystem: repo-local skills, user-local skills, hosted
-agent instructions, shared Git repositories, or Snowflake stage distribution.
-
-Recommended generic layout:
+An Airlock skill teaches an agent the workflow and safety model. This repo
+publishes one canonical skill directory:
 
 ```text
-airlock-agent-tools/
-  airlock/
-    SKILL.md
-    examples/
-      submit-file-with-attachment.md
-      draft-spec-from-template.md
-    templates/
-      spec-config-minimal.json
-  README.md
+airlock_skills/
+  SKILL.md
+  examples/
+  references/
+  templates/
 ```
 
-Project-local variants may use whatever the host expects, such as:
-
-```text
-.codex/skills/airlock/
-.claude/skills/airlock/
-.cortex/skills/airlock/
-.agents/skills/airlock/
-```
-
-Adjust tool names to the host. If an Airlock MCP server exists, the skill should
-prefer typed Airlock tools. Without MCP, it should call SQL procedures directly.
+Install it by importing or copying `airlock_skills/` into the agent's skill
+system. Each AI tool is responsible for its own import mechanics. If an Airlock
+MCP server exists, the skill should prefer typed Airlock tools. Without MCP, it
+should call SQL procedures directly.
 
 ## Minimal Skill
 
@@ -140,6 +137,11 @@ apps. Use installed Airlock stored procedures and preserve structured outputs.
 Airlock SQL APIs are stored procedures: use `CALL`, not
 `SELECT * FROM TABLE(...)`.
 
+Keep submitted payloads clean. Send the business facts declared by the spec, not
+Airlock lifecycle state. Do not invent ids or add workflow, approval, reviewer,
+debug, or "for office use only" fields unless the spec explicitly declares them
+as real source-system facts.
+
 # First Steps
 
 1. Confirm the active Snowflake connection and role.
@@ -153,26 +155,57 @@ Airlock SQL APIs are stored procedures: use `CALL`, not
 
 # Safe Procedure Pattern
 
+Airlock procedures are designed around a small set of families:
+
+- `list_*`, `describe_*`, and `get_*` are read-only discovery.
+- `create_*` and `alter_*` usually take a descriptor `VARIANT` and optional
+  `validate_only`.
+- Destructive operational previews use `dry_run`; drop-style configuration
+  procedures use `force`.
+- User data actions should use named arguments and omit unused optional
+  arguments instead of passing placeholder `NULL` values or typed casts. `path`
+  means staged file source
+  in `validate_data` / `load_data`; `file_path` or workflow `path` identifies an
+  existing manifest file; `path_scope` selects the target folder/lens for direct
+  shared-folder writes.
+- Delegated action procedures use trailing `on_behalf_of_user` and optional
+  `delegation_id`. In the common case, pass only `on_behalf_of_user`; use
+  `delegation_id` only to resolve an ambiguity reported by Airlock. Do not
+  attempt delegation for `airlock.admin.*`.
+
 For data submission:
 
 1. Describe the spec.
 2. Build CSV or file content that matches `column_config` and `file_rules`.
 3. Call `airlock.user.validate_data(...)`.
 4. Only if validation succeeds, call `airlock.user.load_data(...)`.
+   `load_data` evaluates active Expectations before writing the file manifest.
+   Strict unmet expectations return `EXPECTATION_BLOCKED` and do not load the
+   file. Non-strict unmet expectations return `EXPECTATION_WARNING` while still
+   loading the file.
 5. If the spec requires attachments, include `attachment_content_base64` and
    `attachment_filename` in `load_data`, or use `add_attachment` afterward when
    the policy allows it. A `load_data` call with inline attachment content
    already registers that first attachment; add later evidence with a distinct
    `attachment_tag`.
-6. Report `STATUS`, `CODE`, `MESSAGE`, `ISSUES`, returned path, filename, and
+6. If the spec is configured with `Submitted` as its initial workflow step, a
+   successful load already creates the reviewer-facing item. If the spec starts
+   in `Draft` and the user asked to submit for review, use
+   `airlock.user.edit_file_workflow(...)` after a successful load. For delegated
+   work, the same `on_behalf_of_user` must be passed and the spec policy plus
+   active grant must allow `edit_file_workflow` at the current step.
+7. Report `STATUS`, `CODE`, `MESSAGE`, `ISSUES`, returned path, filename, and
    workflow state.
 
-For inline CSV, omit `path`; `path` is only for staged file paths. Use
+For inline CSV, omit `path`; do not pass `path => NULL`. `path` is only for
+staged file paths. Use
 `path_scope` only when the caller is directly choosing a shared/public folder
 such as `public/full_access`. For delegated inline calls, pass
-`on_behalf_of_user`; Airlock resolves the principal's folder. Role-lensed
-validation, including FK or mapped-reference checks, uses the principal lens for
-delegated calls and the caller lens for direct calls.
+`on_behalf_of_user`; Airlock resolves the principal's folder. If role-lensed
+validation needs an explicit role, pass the principal's Airlock role as
+`in_app_role`; Airlock checks it against the principal's assignments, not the
+actor's. Other role-lensed validation, including FK or mapped-reference checks,
+uses the principal lens for delegated calls and the caller lens for direct calls.
 
 # Safety
 
@@ -213,6 +246,25 @@ turning everything into prose.
 Use names that describe Airlock concepts and map clearly to procedures. Start
 with user-safe tools, then add admin tools behind explicit configuration.
 
+### Payload Discipline
+
+Agents and MCP tools should treat `describe_spec` as the source of truth for
+file shape. Build files from `column_config`, `file_rules`, and
+`attachment_policy`; do not add extra columns because an agent finds them useful.
+
+Airlock stores lifecycle state separately:
+
+- file identity: returned `PATH` and `FILENAME`
+- workflow: Airlock workflow state and events
+- evidence: Airlock attachments
+- timing and cadence: Airlock expectations
+- review or commitment output: separate review/commitment specs
+
+Status fields are allowed when they are real business/source facts, such as a
+Shopify product status or Bill.com payment status. They should not duplicate
+Airlock review state such as `approval_status`, `approved_by`, `approved_at`,
+`workflow_status`, or `workflow_step` in a submitter payload.
+
 ### Discovery Tools
 
 | Tool | Maps to | Purpose |
@@ -232,12 +284,16 @@ with user-safe tools, then add admin tools behind explicit configuration.
 | `airlock_describe_spec` | `airlock.user.describe_spec(spec_name, in_app_role, include_managed_roles)` | Return fields, tests, file rules, workflow, attachments, path scopes, and reference guidance. |
 | `airlock_select_reference_data` | `airlock.user.select_reference_data(...)` | Read approved reference-spec data for validation/planning. |
 
+For reference specs, treat `reference_config.object_paths[].readable_columns`
+and any provided `column_config` as one contract: if both are present, every
+readable column must be documented in `column_config`.
+
 ### File and Data Tools
 
 | Tool | Maps to | Purpose |
 | --- | --- | --- |
 | `airlock_validate_data` | `airlock.user.validate_data(...)` | Validate candidate file content without writing. |
-| `airlock_load_data` | `airlock.user.load_data(...)` | Load data into a spec/path; supports inline CSV or staged file path. |
+| `airlock_load_data` | `airlock.user.load_data(...)` | Load data into a spec/path; supports inline CSV or staged file path; returns expectation warnings/errors in `ISSUES`. |
 | `airlock_list_files` | `airlock.user.list_my_files(spec_name, ...)` | Discover active/history files the caller may see. |
 | `airlock_select_files` | `airlock.user.select_my_files(spec_name, ...)` | Read file data through Airlock access checks. |
 | `airlock_delete_files` | `airlock.user.delete_files(..., dry_run)` | Preview or perform file delete where allowed. |
@@ -251,13 +307,15 @@ preserve Airlock's own dry-run output.
 | --- | --- | --- |
 | `airlock_list_work_items` | `airlock.user.list_my_work_items(...)` | List files that can be moved through workflow. |
 | `airlock_edit_file_workflow` | `airlock.user.edit_file_workflow(...)` | Move a file to an allowed workflow state; supports `on_behalf_of_user` only when explicitly delegated by spec policy and grant. |
+| `airlock_submit_file` | `airlock.user.load_data(...)` + `airlock.user.edit_file_workflow(...)` | Convenience tool that validates, loads, attaches required evidence, and advances to Submitted only when workflow policy allows it. |
 | `airlock_list_file_references` | `airlock.user.list_file_references(...)` | Inspect source-link pins between files. |
 | `airlock_add_file_reference` | `airlock.user.add_file_reference(...)` | Pin eligible upstream files for downstream validation. |
 | `airlock_remove_file_reference` | `airlock.user.remove_file_reference(...)` | Remove a file reference pin. |
 
 Workflow changes are lifecycle actions, not necessarily destructive. Tool
 descriptions should say whether the operation is reversible under the configured
-workflow.
+workflow. A convenience "submit" tool must not set workflow columns inside the
+submitted payload; it should call the same workflow procedure a human would use.
 
 ### Attachment Tools
 
@@ -274,13 +332,20 @@ tested restore contract is added later.
 
 | Tool | Maps to | Purpose |
 | --- | --- | --- |
-| `airlock_list_expectations` | `airlock.admin.list_expectations(...)` or future user read procedure | Discover operational cadence/order contracts. |
+| `airlock_list_expectations` | `airlock.admin.list_expectations(...)` | Admin/spec-admin discovery of configured cadence/order contracts. |
 | `airlock_describe_expectation` | `airlock.admin.describe_expectation(...)` | Inspect expectation clauses and scope. |
-| `airlock_list_expectation_work` | `airlock.user.list_my_expectation_work(...)` | Show expectation status and required follow-up for the current user/role lens. |
+| `airlock_list_expectation_work` | `airlock.user.list_my_expectation_work(...)` | Show expectation status, human-friendly `DESCRIPTION`, due timing, active exceptions, and required follow-up for the current user/role lens. |
 
 Expectation administration should stay admin/spec-admin scoped. User-facing
 expectation work/status discovery should use user procedures so agents do not
-need admin scope for operational follow-up.
+need admin scope for operational follow-up. Agents should prefer `DESCRIPTION`
+when telling a user what is expected, and use `TARGET_MILESTONE` only as the
+workflow state that satisfies the expectation. For operational work rows, prefer
+`DETAILS.summary` when present and then cite `DUE_AT`, `DAYS_UNTIL_DUE`,
+`IS_STRICT`, and `ACTIVE_EXCEPTION_COUNT` as supporting facts. When explaining
+an expectation definition, combine `DESCRIPTION`, `CLAUSES`, `EFFECTIVE_AT`, and
+`EXPIRES_AT` so the human sees why it exists, what cadence or order it enforces,
+and whether the contract is currently active.
 
 ### Admin Tools
 
@@ -381,9 +446,14 @@ Expected behavior:
 
 1. Identify role and spec.
 2. Describe spec.
-3. Validate file content.
-4. Load only if valid.
-5. Return loaded path/filename and workflow/attachment status.
+3. Build only the columns declared by the spec; do not invent ids, workflow
+   state, approval fields, or process metadata.
+4. Validate file content.
+5. Load only if valid.
+6. If the request means "submit for review", check the loaded workflow state. If
+   it is not already the reviewer-facing state, advance it through
+   `edit_file_workflow` only when the spec workflow allows it.
+7. Return loaded path/filename and workflow/attachment status.
 
 ### Submit Data with Attachment
 
@@ -394,10 +464,38 @@ $airlock Submit this reimbursement CSV with @receipt.pdf as asmith.
 Expected behavior:
 
 1. Describe the reimbursement spec and attachment policy.
-2. Validate the CSV.
-3. Base64 encode the receipt only for the procedure call.
-4. Load with `attachment_content_base64` and `attachment_filename`.
-5. Do not log raw attachment bytes.
+2. Build the CSV from the reimbursement business fields only; do not invent a
+   reimbursement id or include Airlock approval/workflow columns.
+3. Validate the CSV.
+4. Base64 encode the receipt only for the procedure call.
+5. Load with `attachment_content_base64` and `attachment_filename`.
+6. If the user expects the reimbursement to reach reviewers immediately, first
+   check whether the spec's initial step already placed it in Submitted. If not,
+   move it to Submitted with `edit_file_workflow` after load, using the same
+   delegation context when acting on behalf of someone else.
+7. Do not log raw attachment bytes.
+
+### Delegated Submit and Pushback
+
+```text
+$airlock Submit this reimbursement for asmith with @receipt.png.
+```
+
+Expected behavior:
+
+1. Call `list_my_delegations('received')` and choose the active grant for the
+   principal/spec.
+2. Describe the spec and build only business payload columns.
+3. Validate, load, and attach evidence with `on_behalf_of_user` set to the
+   principal user.
+4. If the grant allows `edit_file_workflow` at Draft, advance the file to
+   Submitted. If not, report that the file is loaded but still Draft.
+5. If a reviewer later returns the file to Draft, explain the workflow comment
+   and expectation due date so the principal knows what to fix and resubmit.
+
+MCP servers may expose this as one convenient tool, but under the hood it is
+still load plus an authorized workflow transition. That distinction matters for
+audit, delegation policy, and expectation gates.
 
 ### Draft a Spec
 
@@ -463,7 +561,7 @@ For active received rows:
 - pass `PRINCIPAL_USER` as `on_behalf_of_user`
 - use the same delegation arguments for `validate_data`, `load_data`, follow-up `add_attachment`, explicitly allowed `replace_attachment`, and explicitly allowed `edit_file_workflow`
 - keep passing `on_behalf_of_user` on every follow-up delegated mutation; if it is omitted, Airlock treats the call as direct actor work and evaluates the actor's own path access
-- omit `path`, `in_app_role`, and `path_scope` for normal delegated inline loads; Airlock resolves the principal's folder
+- omit `path` and `path_scope` for normal delegated inline loads; also omit `in_app_role` unless you are deliberately selecting the principal's role lens
 - remember that inline attachments passed to `load_data` are already registered; use a new `attachment_tag` for extra evidence added later
 - pass `DELEGATION_ID` as `delegation_id` only if Airlock reports an ambiguous delegation
 - prefer structured `ACTION_CONTEXT` when available
@@ -486,6 +584,20 @@ action, not delegated work. Likewise, `user.list_my_work_items` lists
 direct-role workflow visibility; a delegated file load does not make the
 principal's workflow items appear there.
 
+For agent-assisted submission, the clean pattern is:
+
+1. `describe_spec`
+2. `validate_data`
+3. `load_data` with any required attachment
+4. If the spec's configured initial step is already Submitted, report the loaded
+   reviewer-facing file. If the file is Draft, use
+   `edit_file_workflow(action => 'advance')` to reach Submitted only when
+   `edit_file_workflow` is allowed by both spec policy and grant.
+
+If a reviewer pushes the file back to Draft, Airlock workflow comments and
+expectations tell the principal what changed and when it must be resubmitted.
+Do not encode that pushback state in payload columns.
+
 Do not ask the agent to log in as the principal user.
 
 Good:
@@ -506,7 +618,10 @@ Preserve delegation denial codes such as `DELEGATION_NOT_FOUND`,
 Delegated `validate_data` and `load_data` denials appear as `STATUS = 'error'`
 rows with a stable code in `ISSUES`; delegated attachment denials set `CODE`;
 delegated workflow denials set `VALIDATION.issues`. Agent tools should expose
-those structured fields directly.
+those structured fields directly. Expectation findings also appear in
+`load_data` `ISSUES`: `EXPECTATION_BLOCKED` is a strict failure that prevented
+the load, while `EXPECTATION_WARNING` means the file loaded but an operational
+expectation still needs attention.
 
 ## Safety Rules
 
@@ -646,6 +761,7 @@ Recommended versioning:
 ## Related Airlock Docs
 
 - `docs/airlock_api_v1.md` for stored procedure contracts
+- `docs/airlock_spec_design.md` for payload discipline, workflow separation, and VARIANT use
 - `docs/agent_delegation.md` for detailed delegation semantics
 - `docs/procedure_cli_messaging.md` for deterministic agent-facing output
 - `docs/ui_messaging_standards.md` for destructive/recovery language
@@ -658,8 +774,6 @@ Recommended versioning:
   installed app, or both?
 - Should large files stream through the tool layer, require staged paths, or use
   signed upload flows?
-- Should expectation read tools become user-facing, or remain admin/spec-admin
-  only?
 - Should managed-table specs get a separate tool group once that product shape is
   implemented?
 

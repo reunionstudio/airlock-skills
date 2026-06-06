@@ -1,7 +1,7 @@
 # MCP Server Quickstart
 
 Use this path when your agent host can call MCP tools directly. The Airlock
-Tools MCP server exposes typed Airlock tools that call documented
+Skills MCP server exposes typed Airlock tools that call documented
 `airlock.user.*` stored procedures through Snowflake.
 
 Examples assume the installed app object is named `airlock`. If an account uses
@@ -24,13 +24,13 @@ After the package is published for a release, run the server without a permanent
 install:
 
 ```bash
-uvx --from airlock-tools airlock-mcp
+uvx --from airlock-skills airlock-mcp
 ```
 
 Equivalent command alias:
 
 ```bash
-uvx --from airlock-tools airlock-tools-mcp
+uvx --from airlock-skills airlock-skills-mcp
 ```
 
 From a local clone:
@@ -77,9 +77,9 @@ For MCP clients that use JSON server configuration:
 ```json
 {
   "mcpServers": {
-    "airlock-tools": {
+    "airlock-skills": {
       "command": "uvx",
-      "args": ["--from", "airlock-tools", "airlock-mcp"],
+      "args": ["--from", "airlock-skills", "airlock-mcp"],
       "env": {
         "AIRLOCK_SNOWFLAKE_CONNECTION_NAME": "airlock-dev",
         "AIRLOCK_APPLICATION_NAME": "AIRLOCK",
@@ -114,7 +114,7 @@ Snowflake-managed MCP can expose stored procedures as generic MCP tools. That
 can be enough for teams that only need direct stored procedure invocation inside
 Snowflake.
 
-Use Airlock Tools MCP when agents need Airlock-specific tool names, safer
+Use Airlock Skills MCP when agents need Airlock-specific tool names, safer
 defaults, structured result normalization, prompts, resources, delegation
 context, and guidance around specs, paths, workflow, expectations, and
 attachments.

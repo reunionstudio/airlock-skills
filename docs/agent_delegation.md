@@ -67,9 +67,25 @@ Supported delegated actions:
 | `admin.*` procedures | Never | Admin APIs are control-plane authority and are not delegable. |
 | spec/admin operations | No | Too broad for user-to-agent delegation. |
 
-The reimbursement demo follows this split: Deb can be seeded as asmith's delegate
-for `validate_data`, `load_data`, and `add_attachment`, but submit/review/approval
-workflow transitions are intentionally outside the grant.
+The recommended reimbursement pattern is to let an agent prepare the business
+payload and evidence, then get it into the reviewer-facing workflow state through
+normal Airlock policy. There are two supported shapes:
+
+- Configure `Submitted` as the spec's initial workflow step and use `Draft` only
+  for reviewer pushback. Then `load_data` can create the reviewer-facing item
+  without granting workflow movement to the agent.
+- Configure `Draft` as the initial step. Then a higher-level "submit" tool should
+  model submission as two audited actions: `load_data` writes the file, then
+  `edit_file_workflow` advances it if the spec policy and grant both allow
+  workflow movement at the current step.
+
+A tool may present either shape as "submit reimbursement", but it must not
+invent a hidden target-state argument or bypass the same PDP and expectation
+checks that a direct workflow transition would run.
+
+If workflow movement is not delegated and the spec's initial step is `Draft`, the
+agent can still load the file and attachments into Draft. The principal or
+another authorized reviewer must then move it forward.
 
 Delegation action names are `user.*` procedure actions only. Admin procedures
 may create, list, or revoke delegation records as control-plane operations, but
@@ -107,7 +123,7 @@ Spec config shape:
       {
         "step_name": "Submitted",
         "step_order": 2,
-        "allowed_actions": []
+        "allowed_actions": ["validate_data", "load_data", "add_attachment"]
       }
     ],
     "requires_user_approval": true,
@@ -120,25 +136,33 @@ Field meanings:
 
 - `enabled`: explicit opt-in for the spec. Default is `false`.
 - `allowed_actions`: delegable Airlock actions for this spec.
+  `load_data` must be paired with `validate_data`, because every load validates
+  the payload before writing the file manifest.
 - `principal_scope`: which users may be principals. Supported value:
   `assigned_users`.
 - `workflow_step_actions`: optional per-step narrowing of delegable actions. If
   present, global `allowed_actions` is only the outer allowlist; the step must
-  also allow the requested action.
+  also allow the requested action. Each row must include `step_order`; `step_name`
+  is recommended for readability but is not the runtime key.
 - `requires_user_approval`: whether a user must personally approve the
   delegation, as opposed to admin-created delegation only.
 - `max_duration_days`: upper bound on delegation validity.
 
 Use this for submit-style workflows: a spec admin can allow an agent to prepare
-files and attachments while the file is in `Draft`, but keep `Draft -> Submitted`
-or later approval transitions non-delegatable. If the spec should allow delegated
-workflow movement, include `edit_file_workflow` in both the global
-`allowed_actions` and the matching `workflow_step_actions` row.
+files and attachments while the file is in `Draft` or `Submitted`. If files
+should arrive in reviewer hands immediately, prefer making `Submitted` the
+spec's configured initial step and keeping `Draft` for reviewer pushback. If the
+spec instead starts in `Draft` and the agent should be able to submit it, include
+`edit_file_workflow` in both the global `allowed_actions` and the `Draft`
+`workflow_step_actions` row so the agent can advance the just-loaded file. If the
+spec should allow the agent to repair evidence after reviewer pushback, also
+allow the relevant attachment actions in the `Submitted` and/or `Draft` rows.
 
 `admin.validate_spec` validates this policy before save/create. `allowed_actions`
 and per-step `allowed_actions` must be arrays of known user procedure actions;
-admin procedure names are rejected; per-step actions may only narrow the global
-allowlist; `workflow_step_actions` must match configured workflow steps.
+admin procedure names are rejected; `load_data` must include `validate_data`;
+per-step actions may only narrow the global allowlist; `workflow_step_actions`
+must match configured workflow steps by `step_order`.
 
 ## Delegation Record
 
@@ -189,7 +213,7 @@ Admin/spec-admin procedures:
 
 ```sql
 CALL airlock.admin.create_delegation(delegation_descriptor, validate_only);
-CALL airlock.admin.list_delegations(in_app_role, spec_name, principal_user, actor_user);
+CALL airlock.admin.list_delegations(spec_name, principal_user, actor_user, include_revoked);
 CALL airlock.admin.revoke_delegation(delegation_id);
 ```
 
@@ -205,6 +229,13 @@ CALL airlock.user.list_my_delegations();
 `CURRENT_USER()`. This lets asmith grant her agent access for specs she can
 write to, while preventing a delegate from creating a second grant on behalf of
 asmith.
+
+Streamlit does not use `CURRENT_USER()` for delegation creation. The UI calls
+the private `streamlit_internal.create_delegation` /
+`streamlit_internal.revoke_delegation` procedures with the authenticated
+`st.user` viewer and selected Airlock role. In that UI boundary, `app_admin`
+can manage all delegations; non-admin viewers can only create or revoke
+delegations where they are the principal.
 
 The first user-facing list surface is intentionally one procedure:
 
@@ -222,6 +253,9 @@ when more than one active grant matches.
 
 Airlock SQL APIs are stored procedures. Agents should use `CALL
 airlock.user...`; `SELECT * FROM TABLE(...)` is not the procedure call form.
+Use named arguments once optional parameters appear, and omit optional
+arguments you are not using instead of passing placeholder `NULL` values or
+typed casts.
 
 ### Delegated User Actions
 
@@ -292,6 +326,35 @@ follow-up attachment. `replace_attachment` is permanent and requires an explicit
 principal and an explicit `edit_file_workflow` grant at the file's current
 workflow step. Only pass `path_scope` when deliberately targeting a non-default
 shared/public scope.
+
+### Delegated Submit and Reviewer Pushback
+
+For human-facing workflows, prefer this mental model:
+
+1. The human principal grants an agent scoped delegation for a spec.
+2. The agent validates and loads only the business payload required by the spec.
+3. The file reaches the reviewer-facing state either because `Submitted` is the
+   spec's configured initial step, or because the agent is explicitly allowed to
+   call `edit_file_workflow` after loading a Draft.
+4. The reviewer works the Submitted item. If something is wrong, the reviewer
+   returns it to `Draft` with a workflow comment.
+5. The principal sees the returned Draft item in My Work, reads the reviewer
+   comment, fixes or re-sends the content, and resubmits before the expectation
+   due date.
+
+This keeps source data clean. A reimbursement payload should not contain
+`approval_status`, `workflow_step`, reviewer comments, or resubmission metadata;
+Airlock carries those as workflow, event, attachment, and expectation state.
+
+If an MCP server or agent skill exposes a convenience action such as
+`submit_reimbursement_on_behalf_of`, implement it as `describe_spec` +
+`validate_data` + `load_data` + optional `edit_file_workflow`. The tool should
+report the returned `PATH`, `FILENAME`, final workflow state, and any expectation
+or delegation denial code. It should not invent a hidden target-state argument
+unless the installed Airlock API documents one.
+`load_data` can also return expectation findings: `EXPECTATION_BLOCKED` means a
+strict expectation prevented the load; `EXPECTATION_WARNING` means the load
+succeeded but an operational expectation still needs attention.
 
 `delegation_id` can be optional only when exactly one active grant matches the
 actor, principal, spec, path lens, and action. If more than one active grant

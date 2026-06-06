@@ -1,14 +1,20 @@
 ---
 name: airlock
-description: Use Airlock stored procedures or Airlock MCP tools for governed spec discovery, validation, file loading, workflow, attachments, expectations, and safe admin operations.
+description: Use when the user wants to understand, get started with, configure, or operate Airlock; design governed specs; submit or review data; use Airlock stored procedures or MCP tools; manage workflow, attachments, expectations, delegations, and safe admin operations.
 tools:
 - snowflake_sql_execute
 - snowflake_object_search
 ---
 
+# Source Of Truth
+
+The canonical source for this skill is the `airlock_skills/` directory in the
+`airlock-skills` repository. Install it by importing or copying this directory
+into your agent's skill system.
+
 # When to Use
 
-Use this skill when the user asks Cortex Code to work with Airlock, submit data,
+Use this skill when the user asks an AI agent to work with Airlock, submit data,
 create or inspect specs, validate files, attach evidence, move workflow, inspect
 expectations, automate governed ingestion into Snowflake, or explain Airlock's
 agent-oriented architecture and product philosophy.
@@ -20,30 +26,95 @@ Airlock-owned stages, hybrid tables, secure views, generated views, generated
 tables, or replacement apps. Use installed Airlock stored procedures, or Airlock
 MCP tools that call those procedures, and preserve structured outputs.
 
-# First Steps
+# Use The Skill First
+
+This skill is the working guide. Do not reflexively answer conceptual Airlock
+questions by calling `airlock.user.documentation`. Use the guidance, examples,
+templates, and references bundled with this skill first.
+
+Use installed Airlock documentation when you need live app/version truth:
+
+- before executing a procedure whose exact signature matters
+- when a procedure is missing, denied, or returns an unexpected shape
+- after an Airlock app upgrade
+- when the user asks what the installed app supports
+
+For spec design, variant rules, expectations, architecture, install behavior, or
+how to use Airlock safely, answer from this skill unless the user explicitly asks
+you to verify the installed app.
+
+# Business Leader Starting Path
+
+When the user is evaluating Airlock or asking how to begin, start from the
+business process rather than stored-procedure syntax:
+
+1. Pick one process where humans or agents produce important business records.
+2. Define what done means: fields, evidence, validation, deadline, reviewer.
+3. Identify who can submit, who can review, and who can delegate to an agent.
+4. Decide what shared reference data must be checked.
+5. Decide whether workflow or expectations matter.
+6. Start with a small demo spec before automating the broader process.
+
+After this framing, use spec templates, the public spec library, or installed
+Airlock procedures to turn the process into a governed spec.
+
+# Working Procedure Cheat Sheet
+
+Common user calls, assuming the installed app object is named `airlock`:
+
+```sql
+CALL airlock.user.list_my_roles();
+CALL airlock.user.list_my_specs('<airlock_role>');
+CALL airlock.user.describe_spec('<spec_name>', '<airlock_role>');
+CALL airlock.user.validate_data(
+  spec_name => '<spec_name>',
+  file_content => '<csv_header_and_rows>',
+  in_app_role => '<airlock_role>'
+);
+CALL airlock.user.load_data(
+  spec_name => '<spec_name>',
+  file_content => '<csv_header_and_rows>',
+  filename => '<logical_filename>',
+  in_app_role => '<airlock_role>',
+  path_scope => '<path_scope_from_accessible_paths>'
+);
+CALL airlock.user.list_my_files('<spec_name>', '<airlock_role>');
+CALL airlock.user.select_my_files('<spec_name>');
+CALL airlock.user.list_my_work_items('<spec_name>', '<airlock_role>', TRUE);
+CALL airlock.user.list_my_expectation_work('<spec_name>', '<airlock_role>', TRUE);
+```
+
+For inline CSV, omit `path`; `path` is only for staged file paths. Prefer named
+arguments once optional parameters matter. Omit optional arguments you are not
+using instead of passing placeholder `NULL` values.
+
+Only call installed documentation as a live registry check:
+
+```sql
+CALL airlock.user.documentation(CONTENT_MODE => 'PROCEDURES');
+```
+
+# First Steps For Real Calls
 
 1. Confirm the active Snowflake connection, current user, active Snowflake role,
    warehouse, and application/database context.
-2. Query installed Airlock procedure documentation:
-   `CALL airlock.user.documentation(CONTENT_MODE => 'PROCEDURES');`
-3. List the caller's Airlock roles:
-   `CALL airlock.user.list_my_roles();`
-4. Before validation, loading, attachment, or workflow calls, list and describe
+2. List the caller's Airlock roles with `airlock.user.list_my_roles()`.
+3. Before validation, loading, attachment, or workflow calls, list and describe
    the target spec with `airlock.user.list_my_specs(in_app_role)` and
    `airlock.user.describe_spec(spec_name, in_app_role)`.
-
-Installed documentation beats stale repo docs.
+4. Query installed documentation only when the live procedure registry is needed.
 
 Examples assume the installed app object is named `airlock`. If the account uses
 a different app name, substitute that object name in SQL examples and verify the
 active application/database context before calling procedures.
 
-Use the public Airlock documentation site for product concepts and examples:
+Use the public Airlock documentation site for more product concepts and examples:
 `https://reunionstudio.io/airlock/docs/index.html`. Use the Airlock spec library
 for reusable spec-shape ideas and business-object modeling:
 `https://reunionstudio.io/airlock/docs/spec-library.html`. Do not treat either
 public page as the exact procedure contract for an installed app; always verify
-procedure signatures with installed documentation.
+procedure signatures with installed documentation before execution when exact
+parameters matter.
 
 For install, app permissions, uninstall, reinstall, and Native App security
 questions, read `references/marketplace-install-and-security.md`.
@@ -90,13 +161,17 @@ For data submission:
 5. If `attachment_policy.attachment_required` is true, include
    `attachment_content_base64` and `attachment_filename` in `load_data` unless
    installed documentation allows another sequence.
-6. Report `STATUS`, `CODE`, `MESSAGE`, `ISSUES`, returned path, filename, row
+6. If the human intent is submit-for-review, advance the loaded file with
+   `airlock.user.edit_file_workflow(...)` only when workflow policy allows it.
+   For delegated work, keep passing the same `on_behalf_of_user`.
+7. Report `STATUS`, `CODE`, `MESSAGE`, `ISSUES`, returned path, filename, row
    count, workflow state, and attachment result. Do not flatten the result into
    prose-only output.
 
 If an Airlock MCP server is available, prefer typed MCP tools such as
 `airlock_describe_spec`, `airlock_validate_data`, `airlock_load_data`,
-`airlock_list_files`, and `airlock_add_attachment`.
+`airlock_edit_file_workflow`, `airlock_submit_file`, `airlock_list_files`, and
+`airlock_add_attachment`.
 
 # Delegation
 
@@ -113,6 +188,12 @@ codes plus actor, principal, and delegation id in structured output. Do not use
 delegated destructive or governance actions unless installed docs and spec
 policy explicitly allow them.
 
+For delegated submit-for-review workflows, model the user-facing action as
+`validate_data` -> `load_data` -> optional `edit_file_workflow(action =>
+'advance')`. The workflow advance requires both spec policy and active grant. If
+a reviewer returns the file to Draft, explain the workflow comment and any
+expectation due date; do not add workflow or reviewer state to payload columns.
+
 # Flexible Variant Fields
 
 When drafting or altering specs, prefer stable typed columns for durable
@@ -126,6 +207,33 @@ Pair every flexible `variant` column with explicit Airlock validation such as
 supports them. This lets admins alter the spec config later to accept and
 validate new nested keys without changing the physical data structure. Do not
 use `variant` as an unvalidated junk drawer for required business facts.
+
+Minimal spec fragment:
+
+```json
+{
+  "column_config": [
+    {"name": "record_id", "type": "string", "tests": ["not_null"]},
+    {"name": "amount", "type": "number", "tests": []},
+    {"name": "processing_context", "type": "variant", "tests": []}
+  ],
+  "rules": [
+    {
+      "type": "variant_shape",
+      "field": "processing_context",
+      "allowed_root_keys": ["source", "policy", "notes"],
+      "paths": [
+        {"json_path": "$.source.system", "type": "string", "required": false},
+        {"json_path": "$.policy.requires_review", "type": "boolean", "required": false},
+        {"json_path": "$.notes.reason", "type": "string", "required": false}
+      ]
+    }
+  ]
+}
+```
+
+Use `field_path` rules when a validation, such as a reference lookup, needs to
+target a scalar nested inside a `variant` column.
 
 # Expectation Work
 
@@ -145,7 +253,7 @@ Then cross-check workflow context with `airlock_list_work_items` or
 `airlock.user.list_my_work_items(...)` before suggesting a transition. Do not
 edit files, manifests, expectation tables, or events directly. If a strict
 expectation blocks workflow movement, report the expectation name, target
-milestone, enforcement mode, status, due time, matching file count, active
+milestone, strictness, status, due time, matching file count, active
 exception count, and Airlock reason code.
 
 # Safety
@@ -186,6 +294,10 @@ Read only the relevant file when needed:
 - `examples/submit-file-with-attachment.md` for CSV plus receipt/evidence flows.
 - `examples/draft-spec-from-template.md` for safe draft-spec creation.
 - `examples/triage-expectation-work.md` for cadence/order work checks.
+- `references/procedure-cheat-sheet.md` for common Airlock procedure patterns
+  and when to query installed documentation.
+- `references/spec-design.md` for spec structure, variant fields, and advanced
+  validation rules.
 - `templates/spec-config-minimal.json` for a minimal spec-config starting point.
 - `templates/spec-config-with-variant-context.json` for a governed flexible
   context column with `variant_shape` validation.

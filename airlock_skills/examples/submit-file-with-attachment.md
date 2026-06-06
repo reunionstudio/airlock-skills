@@ -9,9 +9,8 @@ receipt PDF or image.
    ```sql
    SELECT CURRENT_USER(), CURRENT_ROLE(), CURRENT_DATABASE(), CURRENT_WAREHOUSE();
    ```
-2. Discover installed procedures and roles:
+2. List Airlock roles:
    ```sql
-   CALL airlock.user.documentation(CONTENT_MODE => 'PROCEDURES');
    CALL airlock.user.list_my_roles();
    ```
 3. Find and describe the spec:
@@ -58,3 +57,7 @@ Return the structured Airlock result:
 - attachment identifiers or attachment issue codes
 
 Do not log raw attachment bytes.
+
+Only call `airlock.user.documentation(CONTENT_MODE => 'PROCEDURES')` if the
+installed app's exact signature is uncertain or a procedure call fails in a way
+that suggests version drift.
