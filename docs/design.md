@@ -4,8 +4,6 @@ For the broader explanation of why an MCP adapter is useful, and why Airlock
 stored procedures remain the source of truth, see
 [mcp_ai_agents_airlock_procedures.md](mcp_ai_agents_airlock_procedures.md).
 For the canonical Airlock skill, see the top-level `airlock_skills/` directory.
-For the Snowflake-managed MCP setup for CoCo, CoWork, and Cortex Agents, see
-[snowflake-managed-mcp.md](snowflake-managed-mcp.md).
 For shipped user-to-agent delegation semantics, see
 [agent_delegation.md](agent_delegation.md).
 For practical human/agent process patterns, including governed posts,
@@ -14,16 +12,15 @@ published reference specs, workflow pushback, and watcher agents, see
 
 ## Positioning
 
-Airlock supports two first-class MCP deployment paths. Snowflake-managed MCP is
-the preferred path for CoCo, CoWork, and Cortex Agents because the tool surface
-lives inside Snowflake. The portable Airlock MCP server is the preferred path
-for other MCP-capable agents. Both are transport adapters around Airlock stored
-procedures:
+Airlock's first-class AI interface is its Snowflake stored procedure API. An
+MCP server is an optional adapter for agent hosts that benefit from MCP tool
+discovery, JSON schemas, or transport outside Snowflake. The portable MCP server
+remains a thin transport adapter around Airlock stored procedures:
 
 ```text
 MCP client
-  -> Snowflake-managed MCP server or portable Airlock MCP server
-      -> Snowflake procedure call
+  -> portable Airlock MCP server
+      -> Snowflake connector
           -> CALL airlock.user.* / airlock.admin.*
               -> Airlock procedures, PDP, events, owned storage
 ```
@@ -61,18 +58,18 @@ Snowflake and MCP ecosystems:
 
 - Airlock skills are plain `SKILL.md` instruction packages with focused examples
   and optional references/templates.
-- Snowflake-managed MCP is a first-class deployment path for CoCo, CoWork, and
-  Cortex Agents, especially when teams want Snowflake-hosted typed tools over
-  Airlock procedures.
-- The portable server adds Airlock-specific behavior for non-Snowflake MCP
-  clients: typed tool names, safe defaults, normalized structured results,
+- Snowflake-native agents such as CoCo can use the Airlock skill and call
+  installed Airlock procedures directly. If that is awkward, the stored
+  procedure docs, signatures, examples, or return shapes should improve first.
+- The portable server adds Airlock-specific behavior for MCP clients outside
+  Snowflake: typed tool names, safe defaults, normalized structured results,
   resource URIs, prompts, and delegation-aware responses.
 - Official MCP SDKs and reference servers are the benchmark for transport,
   registration, and boundary discipline.
 
-The design goal is not to choose one AI host. It is to make Airlock's procedure
-surface easier for agents to use correctly, with a Snowflake-native MCP path for
-Snowflake-native agents and a portable MCP path for everything else.
+The design goal is not to choose one AI host or recreate Airlock outside
+Snowflake. It is to make Airlock's stored procedure surface easier for agents to
+use correctly while preserving procedures as the source of truth.
 
 ## Documentation Sources
 

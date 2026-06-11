@@ -1,13 +1,14 @@
 # Portable MCP Server Quickstart
 
-Use this path when an MCP-capable agent runs outside Snowflake-managed MCP,
-such as a local desktop agent, IDE agent, or hosted agent runtime. The portable
-Airlock Skills MCP server exposes typed Airlock tools that call documented
+Use this path when an MCP-capable agent runs outside Snowflake or strongly
+prefers MCP tool discovery over direct Snowflake SQL. The portable Airlock
+Skills MCP server exposes typed Airlock tools that call documented
 `airlock.user.*` stored procedures through Snowflake.
 
-For CoCo, CoWork, and Cortex Agents, prefer the Snowflake-managed MCP path in
-[snowflake-managed-mcp.md](snowflake-managed-mcp.md). It keeps the tool surface
-inside Snowflake and avoids running a separate MCP process.
+For Snowflake-native agents such as CoCo, prefer the Airlock skill plus direct
+stored-procedure calls first. Airlock procedures already provide the named,
+authorized, documented operation surface inside the customer's Snowflake
+account.
 
 Examples assume the installed app object is named `airlock`. If an account uses
 a different app name, set `AIRLOCK_APPLICATION_NAME`.
@@ -155,13 +156,15 @@ For generated apps and AI agents, keep Airlock as the governance layer:
 - For high-read streams, write through a materialized spec and expose readback
   through a reference spec, as `posts` and `published_posts` demonstrate.
 
-## Snowflake-Managed MCP Sibling Path
+## Snowflake-Native Agents
 
-Snowflake-managed MCP is first-class for CoCo, CoWork, and Cortex Agents. It can
-expose Airlock stored procedures, or thin wrapper procedures, as typed tools
-without running this portable Python server. See
-[snowflake-managed-mcp.md](snowflake-managed-mcp.md).
+For CoCo and other Snowflake-native agents, do not add an MCP layer just to make
+Airlock callable. Use the Airlock skill and call installed Airlock procedures
+directly. If the agent struggles with procedure signatures or result shapes,
+improve the installed Airlock documentation, examples, or stored-procedure
+contracts first.
 
-Use the portable Airlock MCP server when the agent host is outside Snowflake or
-when you need its normalized result envelope, resources, prompts, and portable
-client configuration.
+A Snowflake `CREATE MCP SERVER` object can be useful for a small account-local
+starter toolset, but it is static metadata and should not be treated as the full
+Airlock MCP. A full MCP adapter should be owned and versioned by Airlock so it
+can update as the Airlock procedure API evolves.

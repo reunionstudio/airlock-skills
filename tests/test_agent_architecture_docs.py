@@ -52,20 +52,17 @@ def test_mcp_architecture_prompt_teaches_practical_agent_patterns() -> None:
     assert "posts/published_posts" in prompt
 
 
-def test_snowflake_managed_mcp_is_first_class() -> None:
+def test_coco_guidance_keeps_stored_procedures_primary() -> None:
     readme = _read("README.md")
     quickstart = _read("docs/quickstart-mcp.md")
     design = _read("docs/design.md")
     skill = _read("airlock_skills/SKILL.md")
-    managed = _read("docs/snowflake-managed-mcp.md")
 
-    for text in (readme, quickstart, design, skill):
-        assert "snowflake-managed-mcp.md" in text
-
-    assert "CREATE OR REPLACE MCP SERVER AIRLOCK_AGENT_TOOLS.MCP.airlock_user_tools" in managed
-    assert "Snowflake-managed MCP" in readme
-    assert "portable MCP" in readme
-    assert "CoCo" in managed
-    assert "AIRLOCK.USER.DESCRIBE_SPEC" in managed
-    assert "thin wrapper procedures" in managed
-    assert "Do not point tools at Airlock-owned tables" in managed
+    assert "Airlock's primary API remains" in readme
+    assert "CoCo" in readme
+    assert "direct" in readme and "Airlock stored-procedure calls" in readme
+    assert "Snowflake-native agents such as CoCo" in quickstart
+    assert "Airlock procedures already provide the named" in quickstart
+    assert "Airlock's first-class AI interface is its Snowflake stored procedure API" in design
+    assert "Airlock procedures are the source-of-truth tool surface" in skill
+    assert "snowflake-managed-mcp.md" not in readme + quickstart + design + skill

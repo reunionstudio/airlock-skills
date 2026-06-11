@@ -107,24 +107,20 @@ The mapping is direct:
 Examples assume the installed app object is named `airlock`. If an account uses
 a different app name, substitute that name or configure the adapter with it.
 
-An MCP server can make Airlock easier for agents by wrapping procedures with
-typed tools and JSON Schema. It should remain a thin, auditable transport layer.
+Airlock's stored procedures are already a named, documented, authorized tool
+surface. For Snowflake-native agents such as CoCo, the skill plus direct
+procedure calls should be the default path.
 
-Airlock treats two MCP deployment paths as first-class:
+An MCP server can still make Airlock easier for agents that run outside
+Snowflake or hosts that strongly prefer MCP tool discovery and JSON Schema. It
+should remain a thin, auditable transport layer.
 
-- Snowflake-managed MCP for CoCo, CoWork, and Cortex Agents. This path defines
-  Snowflake MCP server objects whose tools call Airlock procedures or thin
-  wrapper procedures inside Snowflake.
-- Portable Airlock MCP for non-Snowflake MCP clients. This path runs the
-  `airlock-skills` MCP server process and connects to Snowflake with a connector
-  profile or environment.
-
-Recommended MCP shape:
+Recommended portable MCP shape:
 
 ```text
 MCP client
-  -> Snowflake-managed MCP server or portable Airlock MCP server
-      -> Snowflake procedure call
+  -> portable Airlock MCP server
+      -> Snowflake connector or Snowflake CLI-compatible connection
           -> CALL airlock.user.* / airlock.admin.*
               -> Airlock procedures, PDP, events, owned storage
 ```
@@ -404,17 +400,6 @@ CALL airlock.user.select_reference_data(
   in_app_role => 'agent'
 );
 ```
-
-### Snowflake-Managed MCP Tools
-
-For CoCo, CoWork, and Cortex Agents, a Snowflake-managed MCP server can expose
-these same Airlock concepts as typed `GENERIC` stored-procedure tools. Prefer
-this path when the agent already runs inside Snowflake and the account admin is
-willing to create MCP server objects. Keep wrapper procedures thin: they may
-normalize table-shaped results into `VARIANT`, but they must not query
-Airlock-owned objects or reimplement Airlock policy.
-
-The Snowflake-managed MCP guide is `docs/snowflake-managed-mcp.md`.
 
 ### Discovery Tools
 

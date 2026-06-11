@@ -225,13 +225,16 @@ For data submission:
    count, workflow state, and attachment result. Do not flatten the result into
    prose-only output.
 
-If Airlock MCP tools are available, prefer typed tools such as
-`airlock_describe_spec`, `airlock_validate_data`, `airlock_load_data`,
-`airlock_edit_file_workflow`, `airlock_submit_file`, `airlock_list_files`, and
-`airlock_add_attachment`. In CoCo, CoWork, and Cortex Agents, those tools may be
-provided by a Snowflake-managed MCP server object. In other MCP clients, they
-may be provided by the portable Airlock MCP server. Use the typed tool either
-way; fall back to hand-written SQL only when no suitable tool is available.
+For Snowflake-native agents such as CoCo, call installed Airlock stored
+procedures directly unless the environment already provides suitable Airlock MCP
+tools. Airlock procedures are the source-of-truth tool surface inside Snowflake.
+If a procedure is hard for agents to use, prefer installed documentation,
+examples, or procedure-contract improvements over adding a static MCP wrapper.
+
+If Airlock MCP tools are available in a non-Snowflake agent host, prefer typed
+tools such as `airlock_describe_spec`, `airlock_validate_data`,
+`airlock_load_data`, `airlock_edit_file_workflow`, `airlock_submit_file`,
+`airlock_list_files`, and `airlock_add_attachment`.
 
 # Records JSON Authoring
 
@@ -448,8 +451,6 @@ Read only the relevant file when needed:
 - `examples/triage-expectation-work.md` for cadence/order work checks.
 - `references/procedure-cheat-sheet.md` for common Airlock procedure patterns
   and when to query installed documentation.
-- `../docs/snowflake-managed-mcp.md` for first-class CoCo, CoWork, and Cortex
-  Agent typed-tool setup with Snowflake-managed MCP.
 - `references/spec-design.md` for spec structure, variant fields, and advanced
   validation rules.
 - `references/agent-architecture-patterns.md` for human/agent process design,
