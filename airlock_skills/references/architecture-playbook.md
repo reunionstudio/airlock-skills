@@ -124,6 +124,11 @@ centrally governed inputs and outputs rather than private prompt history.
 This improves interoperability, portability across models/vendors, agent
 onboarding, auditability, and durability of business assets.
 
+For implementation patterns such as dedicated human-agent pairing, delegated
+submission, workflow pushback, polling, published reference specs, and watcher
+agents, use `agent-architecture-patterns.md`. This playbook explains the
+philosophy; the agent-patterns reference explains how to apply it.
+
 ## Human-Era vs Agent-Era Pattern
 
 | Human-era pattern | Agent-era pattern with Airlock |

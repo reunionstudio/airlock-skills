@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "airlock-skills"
-version = "0.2.0"
+version = "0.3.0"
 description = "Agent skills and MCP tools for Airlock's Snowflake stored procedure API."
 readme = "README.md"
 requires-python = ">=3.11"

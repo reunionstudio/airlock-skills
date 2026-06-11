@@ -25,16 +25,23 @@ Delegation is not impersonation. Airlock must keep both identities visible:
 Good audit sentence:
 
 ```text
-Deb submitted joe_timesheet_2026_05_17.csv on behalf of Joe.
+agent_user submitted timesheet_2026_05_17.csv on behalf of principal_user.
 ```
 
 Bad audit sentence:
 
 ```text
-Joe submitted joe_timesheet_2026_05_17.csv.
+principal_user submitted timesheet_2026_05_17.csv.
 ```
 
 The bad sentence hides the actor and turns delegation into impersonation.
+
+For most business use cases, an agent should be tied to one accountable human or
+owner account, similar to a dedicated assistant. Shared agents can exist, but
+they need clearer operating rules and stronger audit expectations because the
+business must still know who caused a delegated action and under which grant.
+Do not solve this by giving the agent the human's Airlock role; give the agent
+its own role for direct work and use delegation for on-behalf-of work.
 
 ## Product Defaults
 
@@ -394,8 +401,8 @@ PDP response should include:
   "delegation": {
     "delegated": true,
     "delegation_id": "D123",
-    "actor_user": "DEB_AGENT",
-    "principal_user": "JOE",
+    "actor_user": "AGENT_USER",
+    "principal_user": "PRINCIPAL_USER",
     "action": "load_data"
   }
 }
@@ -409,14 +416,14 @@ principal user's path key, not the actor's path key.
 Example:
 
 ```text
-Deb submits for Joe
+agent_user submits for principal_user
 Spec has isolated user directories
-Airlock writes under Joe's path scope
-Audit says actor=Deb, principal=Joe
+Airlock writes under principal_user's path scope
+Audit says actor=agent_user, principal=principal_user
 ```
 
-This preserves the business meaning of "Joe's timesheet" while still showing who
-actually submitted it.
+This preserves the business meaning of the principal user's record while still
+showing who actually submitted it.
 
 ## Event and Manifest Contract
 
@@ -452,8 +459,8 @@ Every delegated mutation should return the normal Airlock result plus:
 ```json
 {
   "DELEGATED": true,
-  "ACTOR_USER": "DEB_AGENT",
-  "PRINCIPAL_USER": "JOE",
+  "ACTOR_USER": "AGENT_USER",
+  "PRINCIPAL_USER": "PRINCIPAL_USER",
   "DELEGATION_ID": "D123"
 }
 ```
@@ -483,13 +490,13 @@ Its job is enablement and tracking:
 Agent/procedure output should say:
 
 ```text
-Submitting as Deb for Joe
+Submitting as agent_user for principal_user
 ```
 
 Avoid:
 
 ```text
-Logged in as Joe
+Logged in as principal_user
 ```
 
 Spec admin should configure delegation near access/workflow controls. User
@@ -515,7 +522,7 @@ Agent skills should instruct agents:
   work should be discovered from `list_my_delegations` and the delegated
   procedure results
 - treat workflow transitions without `on_behalf_of_user` as direct-role actions
-- report delegated results as "Submitted as Deb for Joe"
+- report delegated results as "Submitted as agent_user for principal_user"
 - preserve delegation denial codes
 
 ## Testing Contract

@@ -4,17 +4,26 @@ For the broader explanation of why an MCP adapter is useful, and why Airlock
 stored procedures remain the source of truth, see
 [mcp_ai_agents_airlock_procedures.md](mcp_ai_agents_airlock_procedures.md).
 For the canonical Airlock skill, see the top-level `airlock_skills/` directory.
+For the Snowflake-managed MCP setup for CoCo, CoWork, and Cortex Agents, see
+[snowflake-managed-mcp.md](snowflake-managed-mcp.md).
 For shipped user-to-agent delegation semantics, see
 [agent_delegation.md](agent_delegation.md).
+For practical human/agent process patterns, including governed posts,
+published reference specs, workflow pushback, and watcher agents, see
+`airlock_skills/references/agent-architecture-patterns.md`.
 
 ## Positioning
 
-The MCP server is a transport adapter around Airlock stored procedures:
+Airlock supports two first-class MCP deployment paths. Snowflake-managed MCP is
+the preferred path for CoCo, CoWork, and Cortex Agents because the tool surface
+lives inside Snowflake. The portable Airlock MCP server is the preferred path
+for other MCP-capable agents. Both are transport adapters around Airlock stored
+procedures:
 
 ```text
 MCP client
-  -> Airlock MCP server
-      -> Snowflake connector
+  -> Snowflake-managed MCP server or portable Airlock MCP server
+      -> Snowflake procedure call
           -> CALL airlock.user.* / airlock.admin.*
               -> Airlock procedures, PDP, events, owned storage
 ```
@@ -36,7 +45,9 @@ Authorization remains inside Snowflake and Airlock:
   ownership, and is not the same as Snowflake `app_admin`.
 - Airlock role hierarchy uses `managed_by_role`: the manager role can include
   managed child roles when a procedure supports managed-role expansion. The
-  child does not automatically inherit the manager's access.
+  child does not automatically inherit the manager's access. Do not set
+  `managed_by_role` to `app_admin`; all roles are already manageable by
+  `app_admin`.
 - License checks and procedure PDP checks remain the source of truth.
 - Procedure output remains structured for agents.
 
@@ -50,16 +61,18 @@ Snowflake and MCP ecosystems:
 
 - Airlock skills are plain `SKILL.md` instruction packages with focused examples
   and optional references/templates.
-- Snowflake-managed MCP can expose generic stored procedure tools when direct
-  procedure invocation is enough.
-- This server adds Airlock-specific behavior: typed tool names, safe defaults,
-  normalized structured results, resource URIs, prompts, and delegation-aware
-  responses.
+- Snowflake-managed MCP is a first-class deployment path for CoCo, CoWork, and
+  Cortex Agents, especially when teams want Snowflake-hosted typed tools over
+  Airlock procedures.
+- The portable server adds Airlock-specific behavior for non-Snowflake MCP
+  clients: typed tool names, safe defaults, normalized structured results,
+  resource URIs, prompts, and delegation-aware responses.
 - Official MCP SDKs and reference servers are the benchmark for transport,
   registration, and boundary discipline.
 
-The design goal is not to compete with generic Snowflake MCP. It is to make
-Airlock's procedure surface easier for agents to use correctly.
+The design goal is not to choose one AI host. It is to make Airlock's procedure
+surface easier for agents to use correctly, with a Snowflake-native MCP path for
+Snowflake-native agents and a portable MCP path for everything else.
 
 ## Documentation Sources
 

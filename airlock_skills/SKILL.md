@@ -120,6 +120,10 @@ For install, app permissions, uninstall, reinstall, and Native App security
 questions, read `references/marketplace-install-and-security.md`.
 For architecture philosophy and "why Airlock" questions, read
 `references/architecture-playbook.md`.
+For process-design questions involving humans, agents, generated apps,
+delegation, watcher/reviewer handoffs, polling, workflow pushback, or
+published reference specs, read
+`references/agent-architecture-patterns.md`.
 
 # Role Model
 
@@ -143,19 +147,72 @@ Keep these separate:
 If the caller has multiple Airlock roles, pass the intended `in_app_role` lens to
 procedures that accept it.
 
+For agent architectures, do not blur direct role authority with delegated
+authority. Assign agents their own Airlock roles for direct work, then use
+user-to-agent delegation when the agent should act for one specific human. Most
+business agents should map to one accountable human or owner account unless the
+business has a clear reason and audit model for a shared agent.
+
 Airlock role hierarchy uses `managed_by_role`: if role `child` is managed by
 role `parent`, then a `parent` lens can include the managed `child` role when a
 procedure supports managed-role expansion. The child does not automatically get
 the parent's access. Use `include_managed_roles=false` when the exact role lens
 matters.
 
+Do not set `managed_by_role` to `app_admin` when creating roles. All Airlock
+roles are already manageable by `app_admin`, so adding `managed_by_role: "app_admin"`
+is redundant and noisy. Use `managed_by_role` only when a non-`app_admin`
+Airlock role should manage or include the new role, such as a
+business manager role that should see work for subordinate roles.
+
+# Admin Role And Assignment Calls
+
+When creating Airlock roles or assignments, use the documented descriptor keys.
+Do not invent friendly aliases.
+
+For assignments, use:
+
+```sql
+CALL airlock.admin.create_assignments(
+  ARRAY_CONSTRUCT(
+    OBJECT_CONSTRUCT(
+      'assignment_name', 'bert.observer',
+      'user_id', 'BERT',
+      'assigned_role', 'observer'
+    )
+  ),
+  FALSE
+);
+```
+
+Required assignment descriptor keys are `assignment_name`, `user_id`, and
+`assigned_role`. Do not use `user_name` or `role_name`; Airlock will reject those
+because they are not the assignment contract. Do not probe `list_assignments()`
+or fake `describe_assignment()` calls just to infer this schema; use these keys
+or query installed documentation when the installed API version is genuinely
+uncertain.
+
+For roles, omit `managed_by_role` unless a non-`app_admin` Airlock role should
+manage or include the new role. Do not set `managed_by_role` to `app_admin`; all
+roles are already manageable by `app_admin`.
+
+Use `validate_only => TRUE` selectively. For simple role or assignment creation,
+once the human has approved the change, call the mutating procedure once with
+`validate_only => FALSE`; Airlock validates the descriptor during the mutating
+call and returns structured `STATUS`, `CODE`, `MESSAGE`, and `ISSUES` on failure.
+Do not run a validate-only call and then the same mutating call by default. Use a
+separate validate-only pass for larger governance changes, spec/template/expectation
+descriptors, unclear descriptors, or when the human asks to preview before
+mutation.
+
 # Safe User Procedure Pattern
 
 For data submission:
 
 1. Describe the spec.
-2. Build CSV or file content matching `column_config`, `file_rules`, and
-   accessible paths.
+2. Build business records from `column_config`, `file_rules`, and accessible
+   paths. Agents and generated apps may author those records as records JSON,
+   then convert to the installed procedure's CSV `file_content` shape.
 3. Call `airlock.user.validate_data(...)`.
 4. Only if validation succeeds, call `airlock.user.load_data(...)`.
 5. If `attachment_policy.attachment_required` is true, include
@@ -168,10 +225,103 @@ For data submission:
    count, workflow state, and attachment result. Do not flatten the result into
    prose-only output.
 
-If an Airlock MCP server is available, prefer typed MCP tools such as
+If Airlock MCP tools are available, prefer typed tools such as
 `airlock_describe_spec`, `airlock_validate_data`, `airlock_load_data`,
 `airlock_edit_file_workflow`, `airlock_submit_file`, `airlock_list_files`, and
-`airlock_add_attachment`.
+`airlock_add_attachment`. In CoCo, CoWork, and Cortex Agents, those tools may be
+provided by a Snowflake-managed MCP server object. In other MCP clients, they
+may be provided by the portable Airlock MCP server. Use the typed tool either
+way; fall back to hand-written SQL only when no suitable tool is available.
+
+# Records JSON Authoring
+
+For agents and generated apps, use records JSON as the authoring shape:
+
+```json
+{
+  "spec_name": "posts",
+  "filename": "post_2026_06_07",
+  "records": [
+    {
+      "post_id": "post-001",
+      "body": "I wish submitting reimbursements were easier.",
+      "tags": "#request #reimbursements",
+      "details": {
+        "request": {
+          "desired_outcome": "Let an approved agent prepare the draft."
+        }
+      }
+    }
+  ]
+}
+```
+
+Records contain business data only. Keep `in_app_role`, `path_scope`,
+`on_behalf_of_user`, `delegation_id`, workflow movement, attachment content,
+retry state, and audit facts outside the record as procedure/tool context.
+
+The installed Airlock procedure contract still receives CSV `file_content`.
+Convert records JSON to CSV locally only for flat specs or specs with declared
+`variant` columns for nested values. Local conversion is a convenience bridge;
+Airlock validation and authorization in Snowflake remain authoritative.
+
+# Governed Posts Demo
+
+Some Airlock demos include a materialized file spec named `posts` and a
+read-only reference spec named `published_posts`. This demonstrates the current
+file-spec model for small governed business signals: users and agents append
+posts into a shared governed folder, while readers query the materialized table
+through reference-spec access.
+
+This is also the day-one pattern for generated apps and watcher agents: write
+through a governed spec, materialize the official records, then read back
+through a reference spec instead of querying Airlock-owned tables directly.
+
+For a demo agent assigned the Airlock role `agent`, use only user procedures:
+
+```sql
+CALL airlock.user.list_my_roles();
+CALL airlock.user.list_my_specs('agent', TRUE);
+CALL airlock.user.describe_spec('posts', 'agent', TRUE);
+CALL airlock.user.describe_spec('published_posts', 'agent', TRUE);
+```
+
+To submit a post, describe `posts` first, build records JSON from the declared
+columns, convert it locally to CSV `file_content`, then validate and load to the
+shared append path:
+
+```sql
+CALL airlock.user.validate_data(
+  spec_name => 'posts',
+  file_content => '<csv_from_posts_records_json>',
+  in_app_role => 'agent',
+  path_scope => 'public/append_access'
+);
+
+CALL airlock.user.load_data(
+  spec_name => 'posts',
+  file_content => '<csv_from_posts_records_json>',
+  filename => '<logical_post_file_name>',
+  in_app_role => 'agent',
+  path_scope => 'public/append_access'
+);
+```
+
+To read the governed post stream, use the reference spec:
+
+```sql
+CALL airlock.user.select_reference_data(
+  spec_name => 'published_posts',
+  object_key => 'posts',
+  row_limit => 100,
+  in_app_role => 'agent'
+);
+```
+
+If `agent` is denied, first check whether `list_my_roles()` actually returns
+`agent` for the Snowflake user in that connection. Do not switch to
+`airlock.admin.*` for this demo; missing `agent` is an assignment or connection
+identity issue, not an admin-discovery issue.
 
 # Delegation
 
@@ -179,7 +329,7 @@ Delegation is not impersonation. Use `airlock_list_my_delegations` or
 `airlock.user.list_my_delegations('received')` to discover active grants where
 the current user is the actor. Use `on_behalf_of_user` and `delegation_id`
 instead of logging in as the principal user. Report delegated work as actor
-acting for principal, for example `Submitted as Deb for Joe`.
+acting for principal, for example `Submitted as agent_user for principal_user`.
 
 Only pass delegation parameters to procedures that support delegated actions,
 such as `validate_data`, `load_data`, `add_attachment`, `replace_attachment`,
@@ -259,7 +409,9 @@ exception count, and Airlock reason code.
 # Safety
 
 - Ask before mutating admin configuration.
-- Use `validate_only => TRUE` for declarative create/alter APIs when available.
+- Use `validate_only => TRUE` selectively for complex or unclear declarative
+  changes, especially spec, template, and expectation descriptors. Do not
+  preflight simple role or assignment creation by default after human approval.
 - Use `dry_run => TRUE` for destructive operational previews when available.
 - Ask for explicit approval before destructive operations or mutating admin
   calls.
@@ -296,8 +448,13 @@ Read only the relevant file when needed:
 - `examples/triage-expectation-work.md` for cadence/order work checks.
 - `references/procedure-cheat-sheet.md` for common Airlock procedure patterns
   and when to query installed documentation.
+- `../docs/snowflake-managed-mcp.md` for first-class CoCo, CoWork, and Cortex
+  Agent typed-tool setup with Snowflake-managed MCP.
 - `references/spec-design.md` for spec structure, variant fields, and advanced
   validation rules.
+- `references/agent-architecture-patterns.md` for human/agent process design,
+  dedicated agent pairing, workflow pushback, polling, published reference
+  specs, and chained watcher/reviewer patterns.
 - `templates/spec-config-minimal.json` for a minimal spec-config starting point.
 - `templates/spec-config-with-variant-context.json` for a governed flexible
   context column with `variant_shape` validation.

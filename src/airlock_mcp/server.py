@@ -603,9 +603,14 @@ def explain_airlock_architecture(audience: str = "technical user") -> str:
         "apps and agents can be task-specific or ephemeral. Explain why this reduces "
         "private agent-local state, supports multi-agent handoffs, preserves audit "
         "history, and lets Snowflake become a direct governed system of record rather "
-        "than merely a downstream analytics warehouse. Keep "
-        "implementation claims grounded: installed Airlock procedure documentation is "
-        "the source of truth for exact capabilities."
+        "than merely a downstream analytics warehouse. For agent process design, "
+        "recommend separate Airlock roles for agents, scoped user-to-agent delegation "
+        "when an agent works for one accountable human, workflow states and comments "
+        "for reviewer pushback, polling governed Airlock work/reference surfaces for "
+        "watcher agents, and materialized write specs plus read-only reference specs "
+        "for high-read streams such as posts/published_posts. Keep implementation "
+        "claims grounded: installed Airlock procedure documentation is the source of "
+        "truth for exact capabilities."
     )
 
 

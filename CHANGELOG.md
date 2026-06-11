@@ -5,9 +5,23 @@ This project follows SemVer-style GitHub releases. Tags should use the
 
 ## Unreleased
 
+## 0.3.0 - 2026-06-11
+
+- Promoted Snowflake-managed MCP to a first-class path for CoCo, CoWork,
+  and Cortex Agents, with a concrete `CREATE MCP SERVER` guide alongside the
+  portable MCP quickstart.
 - Documentation cleanup after `v0.2.0`: refreshed release-process wording,
   upstream delegation/tooling sync notes, and canonical `airlock_skills/`
   packaging.
+- Added governed `posts` / `published_posts` demo guidance so agents discover
+  the `agent` Airlock role, use user procedures, submit to
+  `public/append_access`, and read back through the reference spec without
+  falling back to admin procedures.
+- Added records JSON authoring guidance so agents keep business payloads
+  separate from role, path, workflow, delegation, attachment, and audit context.
+- Added agent-architecture pattern guidance for dedicated human-agent pairing,
+  delegation vs impersonation, workflow pushback, watcher polling, published
+  reference specs, and chained reviewer/agent handoffs.
 
 ## 0.2.0 - 2026-05-19
 

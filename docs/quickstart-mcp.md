@@ -1,8 +1,13 @@
-# MCP Server Quickstart
+# Portable MCP Server Quickstart
 
-Use this path when your agent host can call MCP tools directly. The Airlock
-Skills MCP server exposes typed Airlock tools that call documented
+Use this path when an MCP-capable agent runs outside Snowflake-managed MCP,
+such as a local desktop agent, IDE agent, or hosted agent runtime. The portable
+Airlock Skills MCP server exposes typed Airlock tools that call documented
 `airlock.user.*` stored procedures through Snowflake.
+
+For CoCo, CoWork, and Cortex Agents, prefer the Snowflake-managed MCP path in
+[snowflake-managed-mcp.md](snowflake-managed-mcp.md). It keeps the tool surface
+inside Snowflake and avoids running a separate MCP process.
 
 Examples assume the installed app object is named `airlock`. If an account uses
 a different app name, set `AIRLOCK_APPLICATION_NAME`.
@@ -108,13 +113,55 @@ Then use the normal Airlock pattern:
 describe_spec -> validate_data -> load_data -> list/select/workflow/attach
 ```
 
-## Snowflake-Managed MCP Alternative
+## Governed Posts Smoke
 
-Snowflake-managed MCP can expose stored procedures as generic MCP tools. That
-can be enough for teams that only need direct stored procedure invocation inside
-Snowflake.
+Many demo and onboarding installs include two user-safe specs:
 
-Use Airlock Skills MCP when agents need Airlock-specific tool names, safer
-defaults, structured result normalization, prompts, resources, delegation
-context, and guidance around specs, paths, workflow, expectations, and
-attachments.
+- `posts`: a materialized file spec where users and agents append governed
+  business posts, requests, replies, observations, and agent updates.
+- `published_posts`: a read-only reference spec over the materialized `posts`
+  table for governed readback.
+
+This is the recommended first smoke test for an agent account because it proves
+the agent can discover its Airlock role, validate a payload, write through a
+spec, and read back through a reference spec without direct access to
+Airlock-owned tables.
+
+```text
+airlock_list_my_roles
+airlock_list_specs(in_app_role="agent")
+airlock_describe_spec(spec_name="posts", in_app_role="agent")
+airlock_validate_data(spec_name="posts", ...)
+airlock_load_data(spec_name="posts", ...)
+airlock_describe_spec(spec_name="published_posts", in_app_role="agent")
+airlock_select_reference_data(spec_name="published_posts", object_key="posts")
+```
+
+If the agent cannot see `agent`, `posts`, or `published_posts`, fix the Airlock
+role assignment or demo setup first. Do not switch to admin procedures as a
+workaround for missing user access.
+
+## Architecture Pattern
+
+For generated apps and AI agents, keep Airlock as the governance layer:
+
+- Assign agents their own Airlock roles instead of sharing a human role.
+- Use delegation only when an agent acts for one specific accountable human.
+- Use workflow comments and pushback states for remediation instead of adding
+  workflow columns to payloads.
+- Prefer polling governed Airlock work lists, materialized specs, or reference
+  specs for watcher agents. Snowflake notifications can be explored later, but
+  polling is the simpler default.
+- For high-read streams, write through a materialized spec and expose readback
+  through a reference spec, as `posts` and `published_posts` demonstrate.
+
+## Snowflake-Managed MCP Sibling Path
+
+Snowflake-managed MCP is first-class for CoCo, CoWork, and Cortex Agents. It can
+expose Airlock stored procedures, or thin wrapper procedures, as typed tools
+without running this portable Python server. See
+[snowflake-managed-mcp.md](snowflake-managed-mcp.md).
+
+Use the portable Airlock MCP server when the agent host is outside Snowflake or
+when you need its normalized result envelope, resources, prompts, and portable
+client configuration.

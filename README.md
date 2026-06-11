@@ -1,8 +1,9 @@
 # Airlock Skills and MCP Tools
 
 Airlock Skills and MCP Tools helps AI agents use Airlock safely. The repo
-publishes one canonical Airlock skill directory plus a thin MCP server for
-Airlock's Snowflake stored procedure API.
+publishes one canonical Airlock skill directory plus first-class MCP paths for
+Airlock's Snowflake stored procedure API: a Snowflake-managed MCP setup for
+CoCo/Cortex-native agents and a portable MCP server for other MCP clients.
 
 The core rule is simple: agents should use documented Airlock procedures and
 preserve structured results. They should not write directly to Airlock-owned
@@ -13,8 +14,10 @@ replacement apps.
 
 - `airlock_skills/`: the canonical Airlock skill directory. It contains
   `SKILL.md`, references, examples, and templates.
-- `src/airlock_mcp/`: a user-safe MCP server for documented `airlock.user.*`
-  procedure workflows.
+- `docs/snowflake-managed-mcp.md`: first-class Snowflake-managed MCP setup for
+  CoCo, CoWork, and Cortex Agents.
+- `src/airlock_mcp/`: a user-safe portable MCP server for documented
+  `airlock.user.*` procedure workflows outside Snowflake-managed MCP.
 - `docs/`: design, release, MCP, delegation, install/security, and Airlock
   architecture guidance.
 - `tests/`: unit tests for procedure call construction, result normalization,
@@ -26,11 +29,15 @@ Use the skill by importing or copying the `airlock_skills/` directory into your
 agent's skill system. Each AI tool is responsible for its own skill-import
 mechanics; this repo does not maintain provider-specific mirrors.
 
-Use the MCP server when an agent host can call MCP tools directly. Start with
+For CoCo, CoWork, and Cortex Agents, use Snowflake-managed MCP first: it keeps
+the tool surface inside Snowflake and wraps Airlock procedures as typed tools.
+Start with [docs/snowflake-managed-mcp.md](docs/snowflake-managed-mcp.md).
+
+For non-Snowflake MCP clients, use the portable MCP server. Start with
 [docs/quickstart-mcp.md](docs/quickstart-mcp.md).
 
-Install from GitHub Releases today. After package publication, run the MCP
-server as the Python package named `airlock-skills`.
+Install portable MCP from GitHub Releases today. After package publication, run
+the portable MCP server as the Python package named `airlock-skills`.
 
 ## Documentation Source Priority
 
@@ -67,7 +74,9 @@ roles, delegation, and governed procedure boundaries.
   not the same thing as Snowflake `app_admin`.
 - Airlock role hierarchy uses `managed_by_role`: a manager role can include
   managed child roles when procedures support managed-role expansion. The child
-  does not automatically inherit the manager role's access.
+  does not automatically inherit the manager role's access. Do not set
+  `managed_by_role` to `app_admin`; all roles are already manageable by
+  `app_admin`.
 
 ## Install And Native App Setup
 
@@ -85,7 +94,16 @@ roles, delegation, and governed procedure boundaries.
 
 ## MCP Status
 
-The initial MCP surface focuses on user-safe workflows:
+Airlock Skills now treats two MCP deployment paths as first-class:
+
+- Snowflake-managed MCP for CoCo, CoWork, and Cortex Agents. This path uses
+  Snowflake MCP server objects with typed stored-procedure tools.
+- Portable Airlock MCP for other MCP-capable agents. This path runs the Python
+  server in `src/airlock_mcp/` and connects to Snowflake through a connector
+  profile or environment.
+
+Both paths should expose the same Airlock concepts and preserve structured
+procedure results. The user-safe tool surface focuses on:
 
 - Snowflake and Airlock context discovery.
 - Installed Airlock documentation and procedure registry discovery.
@@ -109,7 +127,7 @@ destructive or governance actions.
 
 ## Implementation Choice
 
-The current MCP server is implemented in Python because Airlock is a
+The portable MCP server is implemented in Python because Airlock is a
 Snowflake-native product and Python has mature Snowflake connector support. MCP
 does not require Python. A Node implementation would also be reasonable if
 distribution through JavaScript package managers or a TypeScript-first agent
@@ -137,8 +155,10 @@ Use GitHub Releases and SemVer tags for this repo:
 - GitHub is the source of truth for docs, the canonical skill, source, tests,
   and releases.
 - GitHub Releases and tags provide stable install targets.
-- The Python package name is `airlock-skills`; the MCP server command is
-  `airlock-mcp` with `airlock-skills-mcp` as an alias.
+- Snowflake-native users can create a Snowflake-managed MCP server from
+  [docs/snowflake-managed-mcp.md](docs/snowflake-managed-mcp.md).
+- The portable Python package name is `airlock-skills`; the MCP server command
+  is `airlock-mcp` with `airlock-skills-mcp` as an alias.
 - Agent users install the skill by importing or copying `airlock_skills/` into
   their own agent's skill system.
 - Code, docs, skills, examples, and templates are licensed under Apache-2.0.

@@ -45,6 +45,48 @@ When a caller has multiple Airlock roles, pass the intended `in_app_role` lens t
 procedures that accept it. Do not mix Airlock roles with Snowflake roles in tool
 names, descriptions, or error messages.
 
+For role creation, do not set `managed_by_role` to `app_admin`. All Airlock roles
+are already manageable by `app_admin`; use `managed_by_role` only when a
+non-`app_admin` Airlock role should manage or include the new role.
+
+For assignment creation, use the exact descriptor keys `assignment_name`,
+`user_id`, and `assigned_role`. Do not use `user_name` or `role_name`. For simple
+role or assignment creation after human approval, call the mutating admin
+procedure once; Airlock validates and returns structured issues on failure, so a
+separate validate-only pass is not required by default.
+
+## Agent Architecture Patterns
+
+Airlock works best when agents are explicit participants in the business
+process, not hidden shortcuts around human permissions.
+
+Recommended patterns:
+
+- Assign agents their own Airlock roles for direct agent work.
+- Use delegation when an agent acts for one specific human. Keep the actor
+  agent, principal user, and delegation id visible in procedure results and
+  audit language. Delegation is not impersonation.
+- Treat most production agents as tied to one accountable human or owner account
+  unless the business has a clear reason and audit model for a shared agent.
+- Use workflow for review, pushback, and handoff. A spec can land new files in
+  `Submitted` so reviewers can act immediately, while `Draft` remains the
+  pushback state when changes are needed.
+- Prefer polling Airlock work lists, expectation work, materialized spec tables,
+  or reference specs for watcher agents today. Snowflake notifications may be an
+  advanced future pattern, but polling governed Airlock surfaces is simpler and
+  easier to audit now.
+- Use materialized specs plus read-only reference specs for high-read streams.
+  The demo `posts` spec writes governed records to the materialized
+  `AIRLOCK_DATA.ACTIVE.T_POSTS` table, while `published_posts` exposes that
+  table back to users and agents through `airlock.user.select_reference_data`.
+- Chain humans and agents through governed outputs rather than private memory.
+  For example, a downstream budget-package agent can watch Approved budget
+  requests; an onboarding agent can watch Accepted applications; a triage agent
+  can watch `published_posts` and reply with linked posts.
+
+The canonical skill reference for these decisions is
+`airlock_skills/references/agent-architecture-patterns.md`.
+
 ## MCP and Stored Procedures
 
 MCP is a structured way for AI clients to discover and call external
@@ -68,12 +110,21 @@ a different app name, substitute that name or configure the adapter with it.
 An MCP server can make Airlock easier for agents by wrapping procedures with
 typed tools and JSON Schema. It should remain a thin, auditable transport layer.
 
+Airlock treats two MCP deployment paths as first-class:
+
+- Snowflake-managed MCP for CoCo, CoWork, and Cortex Agents. This path defines
+  Snowflake MCP server objects whose tools call Airlock procedures or thin
+  wrapper procedures inside Snowflake.
+- Portable Airlock MCP for non-Snowflake MCP clients. This path runs the
+  `airlock-skills` MCP server process and connects to Snowflake with a connector
+  profile or environment.
+
 Recommended MCP shape:
 
 ```text
 MCP client
-  -> Airlock MCP server
-      -> Snowflake connector or Snowflake CLI-compatible connection
+  -> Snowflake-managed MCP server or portable Airlock MCP server
+      -> Snowflake procedure call
           -> CALL airlock.user.* / airlock.admin.*
               -> Airlock procedures, PDP, events, owned storage
 ```
@@ -210,7 +261,9 @@ uses the principal lens for delegated calls and the caller lens for direct calls
 # Safety
 
 - Ask before mutating admin configuration.
-- Use `validate_only` for declarative create/alter APIs when available.
+- Use `validate_only` selectively for complex or unclear declarative changes,
+  especially spec, template, and expectation descriptors. Do not preflight simple
+  role or assignment creation by default after human approval.
 - Use `dry_run` for destructive operational previews when available.
 - Do not hide Airlock reason codes.
 - Do not suggest broad Snowflake privileges when an Airlock role, license,
@@ -264,6 +317,104 @@ Status fields are allowed when they are real business/source facts, such as a
 Shopify product status or Bill.com payment status. They should not duplicate
 Airlock review state such as `approval_status`, `approved_by`, `approved_at`,
 `workflow_status`, or `workflow_step` in a submitter payload.
+
+### Records JSON Authoring
+
+For agents and generated apps, records JSON is the preferred authoring shape:
+
+```json
+{
+  "spec_name": "posts",
+  "filename": "post_2026_06_07",
+  "records": [
+    {
+      "post_id": "post-001",
+      "body": "I wish submitting reimbursements were easier.",
+      "tags": "#request #reimbursements",
+      "details": {
+        "request": {
+          "desired_outcome": "Let an approved agent prepare the draft."
+        }
+      }
+    }
+  ]
+}
+```
+
+Only business fields belong in `records`. Keep role, path, delegation,
+workflow, attachment, retry, and audit context outside the record as
+procedure/tool context.
+
+The installed Airlock procedures still receive CSV `file_content`. Convert
+records JSON to CSV locally only for flat specs or specs with declared
+`variant` columns for nested values. Local conversion is not authorization;
+Airlock validation and authorization in Snowflake remain authoritative.
+
+### Governed Posts Demo
+
+The `posts` demo is intentionally a file-spec demo, not a separate table-spec
+feature. It shows how Airlock can govern small business signals with existing
+spec mechanics:
+
+- `posts`: a materialized file spec where users and agents append shared posts
+  into `public/append_access`.
+- `published_posts`: a read-only reference spec over the materialized
+  `posts` table for governed read-back.
+
+Agent-side discovery and use should stay on `airlock.user.*`:
+
+```sql
+CALL airlock.user.list_my_roles();
+CALL airlock.user.list_my_specs('agent', TRUE);
+CALL airlock.user.describe_spec('posts', 'agent', TRUE);
+CALL airlock.user.describe_spec('published_posts', 'agent', TRUE);
+```
+
+If the caller does not have the `agent` Airlock role, `list_my_specs('agent',
+TRUE)` should fail. That is an Airlock assignment or Snowflake connection
+identity issue. Do not fall back to `airlock.admin.*` for a user/agent demo.
+
+To submit a post, build records JSON from `describe_spec`, convert it locally to
+CSV `file_content`, then call the user procedures:
+
+```sql
+CALL airlock.user.validate_data(
+  spec_name => 'posts',
+  file_content => '<csv_from_posts_records_json>',
+  in_app_role => 'agent',
+  path_scope => 'public/append_access'
+);
+
+CALL airlock.user.load_data(
+  spec_name => 'posts',
+  file_content => '<csv_from_posts_records_json>',
+  filename => '<logical_post_file_name>',
+  in_app_role => 'agent',
+  path_scope => 'public/append_access'
+);
+```
+
+To read the governed post stream:
+
+```sql
+CALL airlock.user.select_reference_data(
+  spec_name => 'published_posts',
+  object_key => 'posts',
+  row_limit => 100,
+  in_app_role => 'agent'
+);
+```
+
+### Snowflake-Managed MCP Tools
+
+For CoCo, CoWork, and Cortex Agents, a Snowflake-managed MCP server can expose
+these same Airlock concepts as typed `GENERIC` stored-procedure tools. Prefer
+this path when the agent already runs inside Snowflake and the account admin is
+willing to create MCP server objects. Keep wrapper procedures thin: they may
+normalize table-shaped results into `VARIANT`, but they must not query
+Airlock-owned objects or reimplement Airlock policy.
+
+The Snowflake-managed MCP guide is `docs/snowflake-managed-mcp.md`.
 
 ### Discovery Tools
 
@@ -603,13 +754,13 @@ Do not ask the agent to log in as the principal user.
 Good:
 
 ```text
-Submitted as Deb for Joe.
+Submitted as agent_user for principal_user.
 ```
 
 Bad:
 
 ```text
-Joe submitted the file.
+principal_user submitted the file.
 ```
 
 Preserve delegation denial codes such as `DELEGATION_NOT_FOUND`,
@@ -627,7 +778,9 @@ expectation still needs attention.
 
 1. Default to read-only discovery unless a mutating tool is explicitly called.
 2. For destructive tools, require explicit confirmation and target identifiers.
-3. Prefer Airlock `validate_only` modes for declarative create/alter APIs.
+3. Prefer Airlock `validate_only` modes for complex declarative spec, template,
+   expectation, or unclear governance changes; avoid redundant preflight calls
+   for simple role or assignment creation after human approval.
 4. Prefer Airlock `dry_run` modes for destructive operational previews.
 5. Never bypass Airlock procedures to write stages or owned tables directly.
 6. Log tool calls with procedure name, status, duration, and stable error code,

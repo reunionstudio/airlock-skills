@@ -24,6 +24,45 @@ CALL airlock.user.documentation(CONTENT_MODE => 'PROCEDURES');
 Do not call documentation as the default response to design or workflow
 questions. The skill contains enough guidance for common usage.
 
+## Admin Roles And Assignments
+
+Use exact descriptor keys for admin role and assignment procedures.
+
+Role creation usually does not need `managed_by_role` when the intended manager
+is `app_admin`; all Airlock roles are already manageable by `app_admin`.
+
+```sql
+CALL airlock.admin.create_roles(
+  ARRAY_CONSTRUCT(
+    OBJECT_CONSTRUCT(
+      'role_name', 'observer',
+      'description', 'Guest role for submitting observations'
+    )
+  ),
+  FALSE
+);
+```
+
+Assignment creation requires `assignment_name`, `user_id`, and `assigned_role`:
+
+```sql
+CALL airlock.admin.create_assignments(
+  ARRAY_CONSTRUCT(
+    OBJECT_CONSTRUCT(
+      'assignment_name', 'bert.observer',
+      'user_id', 'BERT',
+      'assigned_role', 'observer'
+    )
+  ),
+  FALSE
+);
+```
+
+Do not use `user_name` or `role_name` for assignment descriptors. Do not
+probe `list_assignments()` or fake `describe_assignment()` calls just to infer
+this schema; use these keys or query installed documentation when the installed
+API version is genuinely uncertain.
+
 ## Validate And Load Inline CSV
 
 ```sql
@@ -44,6 +83,82 @@ CALL airlock.user.load_data(
 
 For inline CSV, omit `path`. `path` is for staged file paths. Use named
 arguments once optional parameters matter.
+
+## Records JSON Authoring
+
+Agents may author business payloads as records JSON:
+
+```json
+{
+  "spec_name": "posts",
+  "filename": "post_2026_06_07",
+  "records": [
+    {
+      "post_id": "post-001",
+      "body": "I wish submitting reimbursements were easier.",
+      "tags": "#request #reimbursements",
+      "details": {
+        "request": {
+          "desired_outcome": "Let an approved agent prepare the draft."
+        }
+      }
+    }
+  ]
+}
+```
+
+Convert that shape to CSV `file_content` locally for the installed procedure.
+Keep role, path, delegation, workflow, attachment, retry, and audit context
+outside the record.
+
+## Governed Posts Demo
+
+The demo specs `posts` and `published_posts` are user-safe examples for agents.
+`posts` is a materialized file spec where users and agents append shared posts.
+`published_posts` is a read-only reference spec over that materialized table.
+
+Agent discovery:
+
+```sql
+CALL airlock.user.list_my_roles();
+CALL airlock.user.list_my_specs('agent', TRUE);
+CALL airlock.user.describe_spec('posts', 'agent', TRUE);
+CALL airlock.user.describe_spec('published_posts', 'agent', TRUE);
+```
+
+Agent post submission:
+
+```sql
+CALL airlock.user.validate_data(
+  spec_name => 'posts',
+  file_content => '<csv_from_posts_records_json>',
+  in_app_role => 'agent',
+  path_scope => 'public/append_access'
+);
+
+CALL airlock.user.load_data(
+  spec_name => 'posts',
+  file_content => '<csv_from_posts_records_json>',
+  filename => '<logical_post_file_name>',
+  in_app_role => 'agent',
+  path_scope => 'public/append_access'
+);
+```
+
+Read back through the reference spec:
+
+```sql
+CALL airlock.user.select_reference_data(
+  spec_name => 'published_posts',
+  object_key => 'posts',
+  row_limit => 100,
+  in_app_role => 'agent'
+);
+```
+
+If `agent` is denied, verify the connection's `CURRENT_USER()` and the output of
+`list_my_roles()` before trying anything else. Do not use admin procedures to
+work around a missing user assignment.
 
 ## Load With Attachment
 
@@ -123,6 +238,10 @@ Run workflow transitions with `validate_only => TRUE` first when available.
 
 ## Admin Guardrails
 
-Admin procedures affect governance. Use `validate_only => TRUE` for declarative
-create/alter APIs when available, show the planned change, and ask before
-mutating. Use `dry_run => TRUE` for destructive previews.
+Admin procedures affect governance. Ask before mutating. For simple role or
+assignment creation, once the human approves, call the mutating procedure once
+with `validate_only => FALSE`; Airlock validates and returns structured issues on
+failure. Do not run validate-only and then the identical mutating call by
+default. Use `validate_only => TRUE` for larger governance changes,
+spec/template/expectation descriptors, unclear descriptors, or explicit human
+preview requests. Use `dry_run => TRUE` only for destructive previews.
