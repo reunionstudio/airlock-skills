@@ -5,9 +5,12 @@ This project follows SemVer-style GitHub releases. Tags should use the
 
 ## Unreleased
 
+## 0.3.1 - 2026-06-11
+
 - Corrected MCP positioning: CoCo and Snowflake-native agents should use the
   Airlock skill plus direct stored procedures first; MCP remains optional for
   external/non-Snowflake agent hosts.
+
 ## 0.3.0 - 2026-06-11
 
 - Promoted Snowflake-managed MCP to a first-class path for CoCo, CoWork,
