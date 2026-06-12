@@ -224,6 +224,16 @@ Airlock procedures are designed around a small set of families:
   `delegation_id` only to resolve an ambiguity reported by Airlock. Do not
   attempt delegation for `airlock.admin.*`.
 
+
+For spec creation, make the data structure do the hard thinking before tuning
+control structures. Ask what one row represents, what row grain and stable id it
+needs, which timestamps belong to the business event rather than the Airlock
+load, which facts deserve typed columns, what evidence should be Airlock
+attachments, what context belongs in validated `variant` columns, and which
+fields need controlled vocabularies. Decide guest access, workflow, references,
+expectations, and delegation after the core data shape is sound; those controls
+are usually easier to alter later than column structure.
+
 For data submission:
 
 1. Describe the spec.

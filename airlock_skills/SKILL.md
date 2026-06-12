@@ -125,6 +125,36 @@ delegation, watcher/reviewer handoffs, polling, workflow pushback, or
 published reference specs, read
 `references/agent-architecture-patterns.md`.
 
+
+# Spec Creation Internal Dialog
+
+When drafting a spec, reason about the governed business object before writing
+JSON. Ask yourself, and ask the human when the answer changes the data model:
+
+1. What object, event, observation, or commitment is one row about? Define the
+   row grain before defining columns.
+2. Which facts are durable business data that people will filter, join, report,
+   or audit? Make those typed columns.
+3. Which timestamps belong to the business event or observation itself? Airlock
+   already records load user and load time; add fields such as `observed_at`,
+   `transaction_occurred_at`, or `effective_at` only when the business event
+   time is different from the Airlock load time.
+4. What evidence belongs as Airlock attachments? Use attachments for screenshots,
+   receipts, PDFs, exports, or other files. Keep attachment bytes out of data
+   columns and variants; store only evidence metadata when useful.
+5. What metadata is source context rather than core fact? Use validated `variant`
+   fields for evolving context, but do not bury required business facts there.
+6. What controlled vocabularies are needed for enum-like fields such as type,
+   role, platform, status, or capture method?
+7. After the data structure is sound, decide guest access, workflow, references,
+   expectations, and delegation. These control structures can usually be altered
+   later more safely than the core data shape.
+
+For observation specs, prefer typed columns for the observed object's identity,
+source URL or source key, observed/captured timestamp, observer-facing category,
+and business status. Use Airlock load metadata for submission audit only; do not
+mistake it for when the observed real-world thing happened.
+
 # Role Model
 
 Keep these separate:
@@ -460,8 +490,9 @@ Read only the relevant file when needed:
 - `examples/triage-expectation-work.md` for cadence/order work checks.
 - `references/procedure-cheat-sheet.md` for common Airlock procedure patterns
   and when to query installed documentation.
-- `references/spec-design.md` for spec structure, variant fields, and advanced
-  validation rules.
+- `references/spec-design.md` for spec structure, spec-creation questions,
+  observation metadata, attachments, variant fields, and advanced validation
+  rules.
 - `references/agent-architecture-patterns.md` for human/agent process design,
   dedicated agent pairing, workflow pushback, polling, published reference
   specs, and chained watcher/reviewer patterns.

@@ -5,6 +5,9 @@ This project follows SemVer-style GitHub releases. Tags should use the
 
 ## Unreleased
 
+- Added stronger spec-creation guidance so agents reason through object grain,
+  business timestamps, attachments, metadata, variants, and control structures
+  before drafting spec JSON.
 ## 0.3.1 - 2026-06-11
 
 - Corrected MCP positioning: CoCo and Snowflake-native agents should use the

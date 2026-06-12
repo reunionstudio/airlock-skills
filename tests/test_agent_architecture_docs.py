@@ -82,3 +82,26 @@ def test_assignment_guidance_uses_one_naming_convention() -> None:
         assert "<assigned_role>.<normalized_user_id>" in text
         assert "observer.bert" in text
         assert "bert_observer" in text
+
+
+def test_spec_creation_guidance_covers_observation_modeling() -> None:
+    skill = _read("airlock_skills/SKILL.md")
+    spec_design = _read("airlock_skills/references/spec-design.md")
+    combined = _read("docs/airlock-skills.md")
+
+    for text in (skill, spec_design):
+        assert "Spec Creation Internal Dialog" in text
+        assert "row grain" in text
+        assert "Airlock load" in text
+        assert "observed_at" in text
+        assert "attachment bytes" in text
+        assert "controlled vocabularies" in text
+
+    assert "Observation Spec Pattern" in spec_design
+    assert "source_url" in spec_design
+    assert "transaction_occurred_at" in spec_design
+    for phrase in ("guest access", "workflow", "references", "expectations", "delegation"):
+        assert phrase in spec_design
+    assert "what one row represents" in combined
+    assert "business event rather than the Airlock" in combined
+    assert "controlled vocabularies" in combined

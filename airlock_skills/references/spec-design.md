@@ -55,6 +55,77 @@ submits data.
 }
 ```
 
+
+## Spec Creation Internal Dialog
+
+Before drafting JSON, decide what the spec is governing. The hardest part to
+change later is the data structure: row grain, column names, column types, and
+which facts are typed versus nested. Control structures such as guest access,
+workflow, references, expectations, and delegation are important, but they are
+generally safer to alter after the core data shape is right.
+
+Ask these questions in order:
+
+1. **What is the governed object?** Is each row an observation, request,
+   transaction, reimbursement, file, quote, review, approval, or commitment?
+2. **What is the row grain?** One listing per capture? One quote per stay window
+   and guest count? One transaction line? One reimbursement claim? Do not mix
+   multiple grains in one row unless a `record_type` design is intentional.
+3. **What identity survives reloads?** Define a stable id from source keys and
+   business event facts, not from Airlock load time alone.
+4. **What business time matters?** Airlock records who loaded data and when.
+   Add typed columns such as `observed_at`, `captured_at`,
+   `transaction_occurred_at`, `statement_period`, or `effective_at` when the
+   business event happened before or outside the Airlock load.
+5. **What evidence is required?** Screenshots, receipts, PDFs, exports, and
+   supporting files should be Airlock attachments. Data columns or variants may
+   store evidence labels, source URLs, hashes, page titles, or notes, but not
+   attachment bytes.
+6. **What metadata belongs in typed columns?** Promote source URL, source object
+   id, platform, capture method, market, category, status, amount, date, and
+   reference keys when humans will filter, join, audit, or report on them.
+7. **What context may evolve?** Use a validated `variant` column for nested
+   source context, extraction details, or agent notes that may grow over time.
+   Keep required facts and workflow state out of the variant.
+8. **What controlled vocabularies are needed?** For fields such as `record_type`,
+   `platform`, `listing_role`, `quote_status`, or `capture_method`, prefer
+   accepted-value rules when supported. Otherwise document the vocabulary in the
+   description and examples.
+9. **Who submits and who reviews?** After the data shape is clear, choose guest
+   roles, path scopes, workflow states, expectations, and delegation policy.
+
+Ask the human before proceeding when the answer affects row grain, required
+attachments, event timestamps, or which fields must be typed columns. Those
+choices are expensive to unwind after data starts landing. Decide guest access,
+workflow, references, expectations, and delegation after the data model is clear.
+
+### Observation Spec Pattern
+
+For observation specs, distinguish the real-world thing observed from the act of
+submitting the observation to Airlock.
+
+Good typed fields for many observation specs:
+
+- `observation_id`: stable id for the observation grain
+- `observed_object_id`: listing id, transaction id, account id, or other source
+  object key
+- `observed_at` or `captured_at`: when the observation was made
+- `source_url` or `source_object_key`: where the observation came from
+- `source_platform`: source system or website
+- `capture_method`: human entry, browser agent, export, OCR, API, etc.
+- `observer_category` or business-specific role/category
+- amount/date/status fields that are central to the business decision
+
+Airlock load metadata answers who submitted the file and when it entered
+Airlock. It does not answer when an observed quote was captured, when a
+financial transaction occurred, or when an external record became effective.
+Use separate typed columns for those event times.
+
+If screenshots, receipts, PDFs, or exports are needed as evidence, enable
+attachments and define attachment expectations. Do not place raw attachment
+content inside `payload_json`; store only metadata such as source URL, file tag,
+hash, or note when useful.
+
 ## Typed Columns Versus Variant Columns
 
 Use stable typed columns for:
