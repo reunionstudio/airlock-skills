@@ -191,6 +191,19 @@ system. Each AI tool is responsible for its own import mechanics. If an Airlock
 MCP server exists, the skill should prefer typed Airlock tools. Without MCP, it
 should call SQL procedures directly.
 
+For CoCo, the installed folder should be named `airlock`, not `airlock_skills`,
+so the folder name matches the skill frontmatter. Package the source skill with:
+
+```bash
+python3 scripts/package_coco_skill.py
+```
+
+Then copy the generated folder to:
+
+```text
+.snowflake/cortex/skills/airlock/
+```
+
 ## Minimal Skill
 
 ```markdown

@@ -21,6 +21,7 @@ This repository should use GitHub Releases with SemVer-style tags.
    uv run --extra dev ruff check .
    uv run --extra dev python -m pytest
    git diff --check
+   python3 scripts/package_coco_skill.py
    uv build
    ```
 3. Update `CHANGELOG.md`.
@@ -48,6 +49,8 @@ Release notes should say:
 
 - where to install the MCP server package or Git release
 - how to import or copy the `airlock_skills/` directory
+- how CoCo users should install the generated `airlock/` skill folder under
+  `.snowflake/cortex/skills/airlock/`
 - what changed for MCP users
 - what changed for the Airlock skill
 - whether installed Airlock procedure contracts changed

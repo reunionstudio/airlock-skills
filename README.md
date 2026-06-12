@@ -27,6 +27,20 @@ Use the skill by importing or copying the `airlock_skills/` directory into your
 agent's skill system. Each AI tool is responsible for its own skill-import
 mechanics; this repo does not maintain provider-specific mirrors.
 
+For CoCo, install the skill with the folder name `airlock`, matching the
+`name: airlock` frontmatter. The source directory is named `airlock_skills` for
+this repo, but the CoCo workspace destination should be:
+
+```text
+.snowflake/cortex/skills/airlock/
+```
+
+Create a ready-to-copy folder and zip with:
+
+```bash
+python3 scripts/package_coco_skill.py
+```
+
 For Snowflake-native agents such as CoCo, start with the skill and direct
 Airlock stored-procedure calls. CoCo already runs inside Snowflake, so an MCP
 layer is optional rather than required.
@@ -151,7 +165,8 @@ Use GitHub Releases and SemVer tags for this repo:
 - The portable Python package name is `airlock-skills`; the MCP server command
   is `airlock-mcp` with `airlock-skills-mcp` as an alias.
 - Agent users install the skill by importing or copying `airlock_skills/` into
-  their own agent's skill system.
+  their own agent's skill system. For CoCo, package or rename that source
+  directory to `airlock/` under `.snowflake/cortex/skills/`.
 - Code, docs, skills, examples, and templates are licensed under Apache-2.0.
 
 ## Tool Contract

@@ -5,6 +5,11 @@ This project follows SemVer-style GitHub releases. Tags should use the
 
 ## Unreleased
 
+## 0.3.3 - 2026-06-12
+
+- Added CoCo packaging guidance and a `scripts/package_coco_skill.py` helper
+  that produces an install-time skill folder named `airlock`.
+
 ## 0.3.2 - 2026-06-12
 
 - Added stronger spec-creation guidance so agents reason through object grain,
