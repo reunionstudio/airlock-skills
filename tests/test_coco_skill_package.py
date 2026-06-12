@@ -9,6 +9,27 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
 
+def test_canonical_skill_folder_is_airlock() -> None:
+    assert (REPO_ROOT / "airlock" / "SKILL.md").is_file()
+    assert not (REPO_ROOT / "airlock_skills").exists()
+
+
+def test_validate_skill_accepts_canonical_airlock_folder() -> None:
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(REPO_ROOT / "scripts" / "validate_skill.py"),
+            "airlock",
+        ],
+        cwd=REPO_ROOT,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+
+    assert "Skill is valid!" in result.stdout
+
+
 def test_package_coco_skill_creates_airlock_folder_and_zip(tmp_path: Path) -> None:
     output_dir = tmp_path / "coco"
 

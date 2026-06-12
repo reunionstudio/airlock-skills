@@ -21,6 +21,7 @@ This repository should use GitHub Releases with SemVer-style tags.
    uv run --extra dev ruff check .
    uv run --extra dev python -m pytest
    git diff --check
+   python3 scripts/validate_skill.py airlock
    python3 scripts/package_coco_skill.py
    uv build
    ```
@@ -41,15 +42,15 @@ Publish in this order:
 
 1. GitHub Release from the tag.
 2. Python package named `airlock-skills`, when package publishing is ready.
-3. Canonical `airlock_skills/` directory from the released Git tag.
+3. Canonical `airlock/` directory from the released Git tag.
 
 ## Release Notes
 
 Release notes should say:
 
 - where to install the MCP server package or Git release
-- how to import or copy the `airlock_skills/` directory
-- how CoCo users should install the generated `airlock/` skill folder under
+- how to import or copy the `airlock/` directory
+- how CoCo users should install the `airlock/` skill folder under
   `.snowflake/cortex/skills/airlock/`
 - what changed for MCP users
 - what changed for the Airlock skill

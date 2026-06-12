@@ -12,8 +12,8 @@ def _read(path: str) -> str:
 
 
 def test_skill_points_to_agent_architecture_reference() -> None:
-    skill = _read("airlock_skills/SKILL.md")
-    reference = _read("airlock_skills/references/agent-architecture-patterns.md")
+    skill = _read("airlock/SKILL.md")
+    reference = _read("airlock/references/agent-architecture-patterns.md")
 
     assert "references/agent-architecture-patterns.md" in skill
     assert "Delegation is not impersonation" in reference
@@ -56,7 +56,7 @@ def test_coco_guidance_keeps_stored_procedures_primary() -> None:
     readme = _read("README.md")
     quickstart = _read("docs/quickstart-mcp.md")
     design = _read("docs/design.md")
-    skill = _read("airlock_skills/SKILL.md")
+    skill = _read("airlock/SKILL.md")
 
     assert "Airlock's primary API remains" in readme
     assert "CoCo" in readme
@@ -69,8 +69,8 @@ def test_coco_guidance_keeps_stored_procedures_primary() -> None:
 
 
 def test_assignment_guidance_uses_one_naming_convention() -> None:
-    skill = _read("airlock_skills/SKILL.md")
-    cheat_sheet = _read("airlock_skills/references/procedure-cheat-sheet.md")
+    skill = _read("airlock/SKILL.md")
+    cheat_sheet = _read("airlock/references/procedure-cheat-sheet.md")
     combined = _read("docs/airlock-skills.md")
 
     for text in (skill, cheat_sheet, combined):
@@ -85,8 +85,8 @@ def test_assignment_guidance_uses_one_naming_convention() -> None:
 
 
 def test_spec_creation_guidance_covers_observation_modeling() -> None:
-    skill = _read("airlock_skills/SKILL.md")
-    spec_design = _read("airlock_skills/references/spec-design.md")
+    skill = _read("airlock/SKILL.md")
+    spec_design = _read("airlock/references/spec-design.md")
     combined = _read("docs/airlock-skills.md")
 
     for text in (skill, spec_design):
@@ -108,8 +108,8 @@ def test_spec_creation_guidance_covers_observation_modeling() -> None:
 
 
 def test_spec_library_guidance_is_operational_for_coco() -> None:
-    skill = _read("airlock_skills/SKILL.md")
-    spec_design = _read("airlock_skills/references/spec-design.md")
+    skill = _read("airlock/SKILL.md")
+    spec_design = _read("airlock/references/spec-design.md")
     combined = _read("docs/airlock-skills.md")
 
     for text in (skill, spec_design, combined):
@@ -134,7 +134,7 @@ def test_spec_library_guidance_is_operational_for_coco() -> None:
 
 
 def test_skill_examples_use_valid_frontmatter_keys() -> None:
-    skill = _read("airlock_skills/SKILL.md")
+    skill = _read("airlock/SKILL.md")
     combined = _read("docs/airlock-skills.md")
 
     assert "allowed-tools:" in skill

@@ -5,6 +5,12 @@ This project follows SemVer-style GitHub releases. Tags should use the
 
 ## Unreleased
 
+## 0.4.0 - 2026-06-12
+
+- Renamed the canonical skill directory from `airlock_skills/` to `airlock/`
+  so the repository, release asset, CoCo install path, and skill frontmatter
+  all use the same skill folder name.
+
 ## 0.3.3 - 2026-06-12
 
 - Added CoCo packaging guidance and a `scripts/package_coco_skill.py` helper
@@ -31,7 +37,7 @@ This project follows SemVer-style GitHub releases. Tags should use the
   and Cortex Agents, with a concrete `CREATE MCP SERVER` guide alongside the
   portable MCP quickstart.
 - Documentation cleanup after `v0.2.0`: refreshed release-process wording,
-  upstream delegation/tooling sync notes, and canonical `airlock_skills/`
+  upstream delegation/tooling sync notes, and canonical `airlock/`
   packaging.
 - Added governed `posts` / `published_posts` demo guidance so agents discover
   the `agent` Airlock role, use user procedures, submit to

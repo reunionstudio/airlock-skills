@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Package the Airlock skill with the install-time folder name CoCo expects."""
+"""Package the Airlock skill as a CoCo-ready folder and zip."""
 
 from __future__ import annotations
 
@@ -11,7 +11,7 @@ from typing import Iterable
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-SOURCE_DIR = REPO_ROOT / "airlock_skills"
+SOURCE_DIR = REPO_ROOT / "airlock"
 INSTALL_SKILL_NAME = "airlock"
 IGNORED_NAMES = {".DS_Store", "__pycache__"}
 
@@ -76,9 +76,7 @@ def _write_zip(target_dir: Path, zip_path: Path) -> Path:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(
-        description="Create a CoCo-ready Airlock skill folder named `airlock`."
-    )
+    parser = argparse.ArgumentParser(description="Create a CoCo-ready Airlock skill package.")
     parser.add_argument(
         "--output-dir",
         type=Path,

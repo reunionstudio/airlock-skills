@@ -3,12 +3,12 @@
 For the broader explanation of why an MCP adapter is useful, and why Airlock
 stored procedures remain the source of truth, see
 [mcp_ai_agents_airlock_procedures.md](mcp_ai_agents_airlock_procedures.md).
-For the canonical Airlock skill, see the top-level `airlock_skills/` directory.
+For the canonical Airlock skill, see the top-level `airlock/` directory.
 For shipped user-to-agent delegation semantics, see
 [agent_delegation.md](agent_delegation.md).
 For practical human/agent process patterns, including governed posts,
 published reference specs, workflow pushback, and watcher agents, see
-`airlock_skills/references/agent-architecture-patterns.md`.
+`airlock/references/agent-architecture-patterns.md`.
 
 ## Positioning
 

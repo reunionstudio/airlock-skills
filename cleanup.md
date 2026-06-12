@@ -10,24 +10,24 @@
 
 | Date | Source | Target | Issue | Suggested next action |
 | --- | --- | --- | --- | --- |
-| 2026-05-18 | Upstream Airlock `docs/airlock-skills.md` | `README.md`, `docs/*.md`, `airlock_skills/SKILL.md` | The upstream combined guide is broader than this repo's focused docs. | Decide whether to make `docs/airlock-skills.md` the primary guide in this repo or keep it as an upstream sync reference. |
+| 2026-05-18 | Upstream Airlock `docs/airlock-skills.md` | `README.md`, `docs/*.md`, `airlock/SKILL.md` | The upstream combined guide is broader than this repo's focused docs. | Decide whether to make `docs/airlock-skills.md` the primary guide in this repo or keep it as an upstream sync reference. |
 
 ## Done log
 
 - 2026-06-06: Implemented the skill packaging improvement plan: kept
-  `airlock_skills/` canonical as the only committed user skill, kept optional
+  `airlock/` canonical as the only committed user skill, kept optional
   provider-copy generation, added business-leader starting guidance, and
   documented skill upgrade steps.
 - 2026-05-26: Re-ran dependent-repo sync; confirmed shared
   `agent_delegation`, `airlock-skills`, and `airlock_spec_design` docs match
-  upstream, kept the distributable `airlock_skills/` package aligned with
+  upstream, kept the distributable `airlock/` package aligned with
   current agent guidance, and verified the tool repo checks.
 - 2026-05-19: Re-ran dependent-repo sync after `v0.2.0`; confirmed
   `docs/agent_delegation.md` and `docs/airlock-skills.md` match upstream,
   verified delegated `validate_data`, `replace_attachment`, and
   `edit_file_workflow` signatures against Airlock wrappers, and refreshed
   post-release docs wording.
-- 2026-05-22: Added a top-level `airlock_skills/` skill package with `SKILL.md`,
+- 2026-05-22: Added a top-level `airlock/` skill package with `SKILL.md`,
   examples, templates, and references so agents can load Airlock guidance
   without pointing at `docs/` or provider-specific skill paths.
 - 2026-05-18: Bootstrapped dependent-repo maintenance docs, synced upstream

@@ -8,7 +8,7 @@ allowed-tools:
 
 # Source Of Truth
 
-The canonical source for this skill is the `airlock_skills/` directory in the
+The canonical source for this skill is the `airlock/` directory in the
 `airlock-skills` repository. Install it by importing or copying this directory
 into your agent's skill system.
 

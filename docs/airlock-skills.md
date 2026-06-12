@@ -89,7 +89,7 @@ Recommended patterns:
   can watch `published_posts` and reply with linked posts.
 
 The canonical skill reference for these decisions is
-`airlock_skills/references/agent-architecture-patterns.md`.
+`airlock/references/agent-architecture-patterns.md`.
 
 ## Spec Library Patterns
 
@@ -179,29 +179,23 @@ An Airlock skill teaches an agent the workflow and safety model. This repo
 publishes one canonical skill directory:
 
 ```text
-airlock_skills/
+airlock/
   SKILL.md
   examples/
   references/
   templates/
 ```
 
-Install it by importing or copying `airlock_skills/` into the agent's skill
-system. Each AI tool is responsible for its own import mechanics. If an Airlock
-MCP server exists, the skill should prefer typed Airlock tools. Without MCP, it
+Install it by importing or copying `airlock/` into the agent's skill system.
+Each AI tool is responsible for its own import mechanics. If an Airlock MCP
+server exists, the skill should prefer typed Airlock tools. Without MCP, it
 should call SQL procedures directly.
 
-For CoCo, the installed folder should be named `airlock`, not `airlock_skills`,
-so the folder name matches the skill frontmatter. Package the source skill with:
+For CoCo, copy the folder to `.snowflake/cortex/skills/airlock/`. Build the
+same folder shape and release zip with:
 
 ```bash
 python3 scripts/package_coco_skill.py
-```
-
-Then copy the generated folder to:
-
-```text
-.snowflake/cortex/skills/airlock/
 ```
 
 ## Minimal Skill

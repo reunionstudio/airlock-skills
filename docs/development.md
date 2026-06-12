@@ -68,6 +68,7 @@ uv run mcp dev src/airlock_mcp/server.py --with-editable .
 uv run --extra dev ruff check .
 uv run --extra dev python -m pytest
 git diff --check
+python3 scripts/validate_skill.py airlock
 ```
 
 The current tests cover procedure call construction, structured result
@@ -76,5 +77,5 @@ mapping.
 
 ## Skill Directory
 
-`airlock_skills/` is the canonical user-facing Airlock skill. Do not add
+`airlock/` is the canonical user-facing Airlock skill. Do not add
 provider-specific mirrors unless there is a real current integration requirement.
