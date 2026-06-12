@@ -50,10 +50,14 @@ are already manageable by `app_admin`; use `managed_by_role` only when a
 non-`app_admin` Airlock role should manage or include the new role.
 
 For assignment creation, use the exact descriptor keys `assignment_name`,
-`user_id`, and `assigned_role`. Do not use `user_name` or `role_name`. For simple
-role or assignment creation after human approval, call the mutating admin
-procedure once; Airlock validates and returns structured issues on failure, so a
-separate validate-only pass is not required by default.
+`user_id`, and `assigned_role`. Do not use `user_name` or `role_name`. Generate
+assignment names as `<assigned_role>.<normalized_user_id>`, such as
+`observer.bert` or `observer.aroberts`, unless the human supplies an existing
+name. Put the longer-lived Airlock role first and the occupant user second.
+Avoid underscore-separated names such as `bert_observer`. For simple role or
+assignment creation after human approval, call the mutating admin procedure
+once; Airlock validates and returns structured issues on failure, so a separate
+validate-only pass is not required by default.
 
 ## Agent Architecture Patterns
 

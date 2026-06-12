@@ -49,7 +49,7 @@ Assignment creation requires `assignment_name`, `user_id`, and `assigned_role`:
 CALL airlock.admin.create_assignments(
   ARRAY_CONSTRUCT(
     OBJECT_CONSTRUCT(
-      'assignment_name', 'bert.observer',
+      'assignment_name', 'observer.bert',
       'user_id', 'BERT',
       'assigned_role', 'observer'
     )
@@ -58,10 +58,17 @@ CALL airlock.admin.create_assignments(
 );
 ```
 
-Do not use `user_name` or `role_name` for assignment descriptors. Do not
-probe `list_assignments()` or fake `describe_assignment()` calls just to infer
-this schema; use these keys or query installed documentation when the installed
-API version is genuinely uncertain.
+Use assignment names in the form `<assigned_role>.<normalized_user_id>` unless
+the human supplies an existing name. Normalize the Snowflake user id to lower
+case for `assignment_name`, keep `user_id` as the actual Snowflake user id, and
+use a dot separator. Put the longer-lived Airlock role first and the occupant
+user second. Good examples: `observer.bert`, `observer.aroberts`.
+Avoid underscore-separated names such as `bert_observer`.
+
+Do not use `user_name` or `role_name` for assignment descriptors. Do not probe
+`list_assignments()` or fake `describe_assignment()` calls just to infer this
+schema; use these keys or query installed documentation when the installed API
+version is genuinely uncertain.
 
 ## Validate And Load Inline CSV
 

@@ -176,7 +176,7 @@ For assignments, use:
 CALL airlock.admin.create_assignments(
   ARRAY_CONSTRUCT(
     OBJECT_CONSTRUCT(
-      'assignment_name', 'bert.observer',
+      'assignment_name', 'observer.bert',
       'user_id', 'BERT',
       'assigned_role', 'observer'
     )
@@ -187,10 +187,19 @@ CALL airlock.admin.create_assignments(
 
 Required assignment descriptor keys are `assignment_name`, `user_id`, and
 `assigned_role`. Do not use `user_name` or `role_name`; Airlock will reject those
-because they are not the assignment contract. Do not probe `list_assignments()`
-or fake `describe_assignment()` calls just to infer this schema; use these keys
-or query installed documentation when the installed API version is genuinely
-uncertain.
+because they are not the assignment contract.
+
+Use this recommended assignment-name convention unless the human supplies an
+existing name: `<assigned_role>.<normalized_user_id>`. Normalize the Snowflake
+user id to lower case for the `assignment_name` only, keep `user_id` as the
+actual Snowflake user id, and use a dot as the separator. Put the longer-lived
+Airlock role first and the occupant user second. Examples: `observer.bert`,
+`observer.aroberts`, `agent.deb`. Do not generate
+underscore-separated assignment names such as `bert_observer`.
+
+Do not probe `list_assignments()` or fake `describe_assignment()` calls just to
+infer this schema; use these keys and naming convention, or query installed
+documentation when the installed API version is genuinely uncertain.
 
 For roles, omit `managed_by_role` unless a non-`app_admin` Airlock role should
 manage or include the new role. Do not set `managed_by_role` to `app_admin`; all

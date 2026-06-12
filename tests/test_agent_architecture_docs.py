@@ -66,3 +66,19 @@ def test_coco_guidance_keeps_stored_procedures_primary() -> None:
     assert "Airlock's first-class AI interface is its Snowflake stored procedure API" in design
     assert "Airlock procedures are the source-of-truth tool surface" in skill
     assert "snowflake-managed-mcp.md" not in readme + quickstart + design + skill
+
+
+def test_assignment_guidance_uses_one_naming_convention() -> None:
+    skill = _read("airlock_skills/SKILL.md")
+    cheat_sheet = _read("airlock_skills/references/procedure-cheat-sheet.md")
+    combined = _read("docs/airlock-skills.md")
+
+    for text in (skill, cheat_sheet, combined):
+        assert "assignment_name" in text
+        assert "user_id" in text
+        assert "assigned_role" in text
+        assert "user_name" in text
+        assert "role_name" in text
+        assert "<assigned_role>.<normalized_user_id>" in text
+        assert "observer.bert" in text
+        assert "bert_observer" in text
