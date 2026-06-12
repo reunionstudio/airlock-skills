@@ -5,9 +5,15 @@ This project follows SemVer-style GitHub releases. Tags should use the
 
 ## Unreleased
 
+## 0.3.2 - 2026-06-12
+
 - Added stronger spec-creation guidance so agents reason through object grain,
   business timestamps, attachments, metadata, variants, and control structures
   before drafting spec JSON.
+- Added CoCo-oriented guidance for using the Airlock spec library as a pattern
+  source while treating local/uploaded files as more reliable than live web
+  access.
+
 ## 0.3.1 - 2026-06-11
 
 - Corrected MCP positioning: CoCo and Snowflake-native agents should use the

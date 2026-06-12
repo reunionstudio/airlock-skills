@@ -1,7 +1,7 @@
 ---
 name: airlock
 description: Use when the user wants to understand, get started with, configure, or operate Airlock; design governed specs; submit or review data; use Airlock stored procedures or MCP tools; manage workflow, attachments, expectations, delegations, and safe admin operations.
-tools:
+allowed-tools:
 - snowflake_sql_execute
 - snowflake_object_search
 ---
@@ -55,8 +55,8 @@ business process rather than stored-procedure syntax:
 5. Decide whether workflow or expectations matter.
 6. Start with a small demo spec before automating the broader process.
 
-After this framing, use spec templates, the public spec library, or installed
-Airlock procedures to turn the process into a governed spec.
+After this framing, use spec templates, local or uploaded spec-library patterns,
+or installed Airlock procedures to turn the process into a governed spec.
 
 # Working Procedure Cheat Sheet
 
@@ -115,6 +115,39 @@ for reusable spec-shape ideas and business-object modeling:
 public page as the exact procedure contract for an installed app; always verify
 procedure signatures with installed documentation before execution when exact
 parameters matter.
+
+# Use The Spec Library As Patterns
+
+When the user asks for a setup, scenario, or new small-business process, look
+for a nearby spec pattern before inventing a schema. Good starting families
+include reimbursements, timesheets, projects, invoices, budgets, ops issues,
+posts/signals, CRM, payments, ecommerce, ads, accounting, support, and local
+operations.
+
+Use this source order:
+
+1. If a local `airlock-specs/` repo or uploaded spec-library folder is
+   available, read `catalog.json`, then only the closest `collections/*.json`
+   and `specs/**/*.json` files.
+2. If only the public spec-library page is available, use it as pattern context,
+   not as an execution contract.
+3. If no library source is available, keep working from the scenario family and
+   `references/spec-design.md`; do not block on GitHub cloning or live web
+   access.
+
+In CoCo Cloud Agents, prefer workspace skills and uploaded/local files over live
+internet, live web access, or GitHub access. If a pattern source is unavailable,
+say which source was unavailable, proceed with a reasonable draft or questions,
+and mark any assumptions.
+
+Use library specs as examples, not as unquestioned truth. Always report the
+pattern used, whether it is an observation, commitment, reconciliation, or
+reference/master-data shape, and what you adapted: row grain, typed fields,
+attachments, variants, guest roles, path scopes, workflow, expectations,
+references, and delegation. If no close pattern exists, use
+`references/spec-design.md` and ask only the spec-creation questions that affect
+row grain, required attachments, event timestamps, or typed fields before
+drafting JSON.
 
 For install, app permissions, uninstall, reinstall, and Native App security
 questions, read `references/marketplace-install-and-security.md`.
@@ -464,9 +497,10 @@ exception count, and Airlock reason code.
   says a tested restore path exists.
 - Do not log raw file contents, attachment bytes, private keys, passphrases, or
   SQL stack traces.
-- When drafting specs, consult the public spec library for candidate fields,
-  attachments, workflow, references, and path-scope ideas, then validate against
-  installed Airlock procedures and the target spec/template rules.
+- When drafting specs, consult local or uploaded spec-library files first, or
+  public spec-library context when available, for candidate fields, attachments,
+  workflow, references, and path-scope ideas. Then validate against installed
+  Airlock procedures and the target spec/template rules.
 
 # Common Blockers
 

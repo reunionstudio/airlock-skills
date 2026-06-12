@@ -91,6 +91,34 @@ Recommended patterns:
 The canonical skill reference for these decisions is
 `airlock_skills/references/agent-architecture-patterns.md`.
 
+## Spec Library Patterns
+
+For new Airlock setups, agents should start from the business scenario and then
+look for nearby spec-library patterns. The public spec library covers reusable
+shapes for small-business operations such as projects, timesheets, invoices,
+budget requests, reimbursements, ops issues, governed posts/signals, payments,
+ecommerce, accounting, CRM, support, marketing, analytics, treasury, and
+reconciliation.
+
+When a local `airlock-specs/` repo or uploaded library folder is available, read
+`catalog.json`, then the closest collection and spec JSON files. When only CoCo
+web search is available, use the public spec-library page as context, but do not
+depend on live internet or GitHub access for correctness. CoCo Cloud Agents can
+web-search, but external host access from the container can be restricted; the
+installed skill and local/uploaded files are the reliable working surface.
+
+If no library source is reachable, agents should still proceed from the scenario
+family and spec-design questions instead of blocking on GitHub cloning or live
+web access.
+
+Library specs are patterns, not commands to copy blindly. Adapt row grain, typed
+fields, attachments, variants, guest access, workflow, source links,
+expectations, and delegation to the user's actual process. Installed Airlock
+documentation remains the execution contract for exact procedure signatures.
+
+Agent responses should include a pattern note: source used or unavailable,
+candidate pattern, pattern type, key adaptations, and remaining human decisions.
+
 ## MCP and Stored Procedures
 
 MCP is a structured way for AI clients to discover and call external
@@ -169,7 +197,7 @@ should call SQL procedures directly.
 ---
 name: airlock
 description: Use Airlock stored procedures for governed spec discovery, validation, file loading, workflow, attachments, delegations, and safe admin operations.
-tools:
+allowed-tools:
 - snowflake_sql_execute
 - snowflake_object_search
 ---

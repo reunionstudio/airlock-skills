@@ -99,6 +99,45 @@ attachments, event timestamps, or which fields must be typed columns. Those
 choices are expensive to unwind after data starts landing. Decide guest access,
 workflow, references, expectations, and delegation after the data model is clear.
 
+### Scenario And Spec-Library Workflow
+
+For common business setups, use the Airlock spec library as a pattern shelf:
+
+1. Name the scenario in business language: reimbursements, weekly timesheets,
+   budget requests, project catalog, invoice lines, ops issue register,
+   governed posts/signals, Stripe payments, Square or Toast POS, QuickBooks or
+   NetSuite accounting, Shopify or Etsy commerce, Salesforce or HubSpot CRM,
+   Jira or Linear project work, ServiceNow support, marketing ads, analytics,
+   treasury, or reconciliation.
+2. If a local `airlock-specs/` directory or uploaded library folder is
+   available, read `catalog.json` and then the closest collection/spec files.
+   If only the public docs are available, use
+   `https://reunionstudio.io/airlock/docs/spec-library.html` as browseable
+   pattern context.
+3. Identify whether the candidate pattern is an observation, commitment,
+   reconciliation, or reference/master-data spec. Do not copy an observation
+   shape when the user needs an approved outbound commitment.
+4. Borrow candidate columns, source links, expectation ideas, attachment policy,
+   and workflow states, but still answer the internal-dialog questions for the
+   user's exact process.
+5. Preserve durable typed fields from the pattern when they match the process;
+   put sparse or evolving provider detail in validated `variant` columns.
+6. If no library source is reachable, continue from the scenario family and the
+   internal-dialog questions. Do not stop just because GitHub cloning or live web
+   access is unavailable.
+7. Verify the final descriptor against the installed Airlock procedures before
+   creating or altering specs. Library examples may be ahead of, behind, or more
+   general than the installed app version.
+
+Do not assume CoCo can always clone GitHub or read arbitrary public URLs. Cloud
+Agents can web-search, but outbound host access from the container can be
+restricted and personal skills are workspace-scoped. Treat local or uploaded
+skill/library files as the reliable source, public web pages as helpful context,
+and installed Airlock documentation as the execution contract.
+
+When reporting a draft, include a short pattern note: source used or unavailable,
+candidate pattern, pattern type, key adaptations, and remaining human decisions.
+
 ### Observation Spec Pattern
 
 For observation specs, distinguish the real-world thing observed from the act of

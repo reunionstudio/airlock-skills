@@ -105,3 +105,39 @@ def test_spec_creation_guidance_covers_observation_modeling() -> None:
     assert "what one row represents" in combined
     assert "business event rather than the Airlock" in combined
     assert "controlled vocabularies" in combined
+
+
+def test_spec_library_guidance_is_operational_for_coco() -> None:
+    skill = _read("airlock_skills/SKILL.md")
+    spec_design = _read("airlock_skills/references/spec-design.md")
+    combined = _read("docs/airlock-skills.md")
+
+    for text in (skill, spec_design, combined):
+        assert "airlock-specs" in text
+        assert "catalog.json" in text
+        assert "spec library" in text
+        assert (
+            "live" in text and ("internet" in text or "web access" in text)
+        ) or "public URLs" in text
+        assert "installed Airlock" in text
+        assert "GitHub cloning" in text
+        assert "do not block" in text or "Do not stop" in text or "instead of blocking" in text
+        assert "source used or unavailable" in text or "source is unavailable" in text
+
+    assert "Use The Spec Library As Patterns" in skill
+    assert "Scenario And Spec-Library Workflow" in spec_design
+    assert "pattern used" in skill
+    assert "pattern note" in spec_design
+    assert "pattern note" in combined
+    for scenario in ("reimbursements", "timesheets", "budget", "ops issues", "payments"):
+        assert scenario in skill + spec_design + combined
+
+
+def test_skill_examples_use_valid_frontmatter_keys() -> None:
+    skill = _read("airlock_skills/SKILL.md")
+    combined = _read("docs/airlock-skills.md")
+
+    assert "allowed-tools:" in skill
+    assert "allowed-tools:" in combined
+    assert "\ntools:\n- snowflake_sql_execute" not in skill
+    assert "\ntools:\n- snowflake_sql_execute" not in combined
