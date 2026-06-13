@@ -16,6 +16,13 @@
       "tests": ["not_null"]
     },
     {
+      "name": "record_date",
+      "type": "date",
+      "description": "Business date for the record.",
+      "format": "%Y-%m-%d",
+      "tests": ["not_null"]
+    },
+    {
       "name": "amount",
       "type": "number",
       "description": "Example amount kept as a typed column for reporting.",
@@ -55,8 +62,13 @@
   "file_rules": {
     "file_format": {
       "file_type": "csv",
-      "delimiter": ",",
-      "has_header": true
+      "record_delimiter": "\n",
+      "field_delimiter": ",",
+      "field_optionally_enclosed_by": "\"",
+      "escape_unenclosed_field": "\\",
+      "encoding": "UTF8",
+      "parse_header": true,
+      "save_header": true
     }
   },
   "attachment_policy": {

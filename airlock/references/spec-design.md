@@ -35,17 +35,43 @@ submits data.
     "is_archived": false
   },
   "column_config": [
-    {"name": "request_id", "type": "string", "tests": ["not_null"]},
-    {"name": "request_date", "type": "date", "tests": ["not_null"]},
-    {"name": "amount", "type": "number", "tests": []},
-    {"name": "processing_context", "type": "variant", "tests": []}
+    {
+      "name": "request_id",
+      "type": "string",
+      "description": "Stable request identifier.",
+      "tests": ["not_null"]
+    },
+    {
+      "name": "request_date",
+      "type": "date",
+      "description": "Business date for the request.",
+      "format": "%Y-%m-%d",
+      "tests": ["not_null"]
+    },
+    {
+      "name": "amount",
+      "type": "number",
+      "description": "Requested amount.",
+      "tests": []
+    },
+    {
+      "name": "processing_context",
+      "type": "variant",
+      "description": "Optional evolving context governed by validation rules.",
+      "tests": []
+    }
   ],
   "rules": [],
   "file_rules": {
     "file_format": {
       "file_type": "csv",
-      "delimiter": ",",
-      "has_header": true
+      "record_delimiter": "\n",
+      "field_delimiter": ",",
+      "field_optionally_enclosed_by": "\"",
+      "escape_unenclosed_field": "\\",
+      "encoding": "UTF8",
+      "parse_header": true,
+      "save_header": true
     }
   },
   "attachment_policy": {
@@ -55,6 +81,13 @@ submits data.
 }
 ```
 
+This is a full admin spec-config shape for `airlock.admin.create_spec` or
+`airlock.admin.alter_spec`. Do not paste it wholesale into
+`airlock.user.create_spec_from_template`; that user procedure starts from an
+assigned template and accepts narrow `spec_config_overrides`.
+
+Date and datetime `format` values must use strftime tokens such as `%Y-%m-%d`
+or `%Y-%m-%d %H:%M:%S`; display masks such as `YYYY-MM-DD` are invalid.
 
 ## Spec Creation Internal Dialog
 

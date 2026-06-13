@@ -24,6 +24,105 @@ CALL airlock.user.documentation(CONTENT_MODE => 'PROCEDURES');
 Do not call documentation as the default response to design or workflow
 questions. The skill contains enough guidance for common usage.
 
+## Spec Creation Surfaces
+
+Use the shape that matches the procedure:
+
+- `airlock.admin.create_spec(spec_config, validate_only, ...)` accepts a full
+  canonical spec config with sections such as `core_config`, `column_config`,
+  `file_rules`, `guest_access`, `attachment_policy`, and `rules`.
+- `airlock.user.create_spec_from_template(template_name, new_spec_name,
+  spec_alias, spec_config_overrides)` starts from an assigned or public template.
+  Overrides should be narrow editable paths such as
+  `{"core_config.description": "FY26"}`. Nested JSON is flattened to dot-path
+  keys, but do not paste a full admin config unless the template's field-access
+  rules explicitly allow those paths and the values pass validation.
+
+If `CREATE_SPEC_FAILED` returns `VALIDATION.invalid_tabs`, treat those entries
+as failed validation sections, not unknown JSON keys. For example,
+`["column_config", "guest_access"]` means the core spec name/owner checks passed,
+but column and guest-access validation failed. Do not diagnose that as a
+duplicate spec name unless `core` is in `invalid_tabs` or `core_errors` says so.
+Do not assume `full_access` is invalid; valid guest access levels include
+`full_access`, `append_access`, and `read_access`.
+
+When details are missing, apply the known validators before asking to drop or
+recreate anything:
+
+- `column_config` must be a non-empty list; every column needs `name`,
+  `type`/`data_type`, `description`, and `tests` as a list. `date` and
+  `datetime` columns need a strftime `format` such as `%Y-%m-%d` or
+  `%Y-%m-%d %H:%M:%S`; display masks such as `YYYY-MM-DD` are invalid.
+- CSV `file_rules.file_format` uses canonical keys such as
+  `record_delimiter`, `field_delimiter`, `field_optionally_enclosed_by`,
+  `escape_unenclosed_field`, `encoding`, `parse_header`, and `save_header`.
+- `guest_access`, when enabled, needs real non-`app_admin` Airlock guest roles
+  and at least one directory model: isolated directories with an access level,
+  or a public folder with at least one enabled subfolder (`full_access`,
+  `append_access`, or `read_access`).
+  If `isolated_directories_enabled` is `false`, changing
+  `guest_roles[].access_level` will not enable a shared folder; set
+  `public_folder.enabled` and one `public_folder.subfolders.*.enabled` flag.
+
+Date/datetime column examples:
+
+```json
+{
+  "column_config": [
+    {
+      "name": "observed_date",
+      "type": "date",
+      "description": "Date captured.",
+      "format": "%Y-%m-%d",
+      "tests": ["not_null"]
+    },
+    {
+      "name": "captured_at",
+      "type": "datetime",
+      "description": "Timestamp captured.",
+      "format": "%Y-%m-%d %H:%M:%S",
+      "tests": []
+    }
+  ]
+}
+```
+
+Shared public-folder append example:
+
+```json
+{
+  "guest_access": {
+    "enabled": true,
+    "guest_roles": [{"role_name": "observer"}],
+    "isolated_directories_enabled": false,
+    "isolated_access_level": null,
+    "public_folder": {
+      "enabled": true,
+      "subfolders": {
+        "append_access": {"enabled": true},
+        "full_access": {"enabled": false},
+        "read_access": {"enabled": false}
+      }
+    }
+  }
+}
+```
+
+Isolated role-folder example:
+
+```json
+{
+  "guest_access": {
+    "enabled": true,
+    "guest_roles": [{"role_name": "observer", "access_level": "full_access"}],
+    "isolated_directories_enabled": true,
+    "isolated_access_level": "full_access",
+    "isolated_directories_per_user": false,
+    "public_folder": {"enabled": false}
+  }
+}
+```
+
 ## Admin Roles And Assignments
 
 Use exact descriptor keys for admin role and assignment procedures.

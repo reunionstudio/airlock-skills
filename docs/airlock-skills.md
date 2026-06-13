@@ -269,6 +269,21 @@ fields need controlled vocabularies. Decide guest access, workflow, references,
 expectations, and delegation after the core data shape is sound; those controls
 are usually easier to alter later than column structure.
 
+Use the spec creation shape that matches the procedure. `airlock.admin.create_spec`
+accepts a full spec config. `airlock.user.create_spec_from_template` starts from
+an assigned or public template and should receive narrow editable overrides,
+usually dot-path keys such as `{"core_config.description": "FY26"}`. When
+`CREATE_SPEC_FAILED` returns `VALIDATION.invalid_tabs`, treat those entries as
+failed validation sections. `column_config` plus `guest_access` does not imply a
+duplicate spec name; duplicate names normally fail under `core`. `full_access`,
+`append_access`, and `read_access` are valid guest access levels. If guest
+access is enabled with `isolated_directories_enabled=false`, changing
+`guest_roles[].access_level` will not enable a shared folder; set
+`public_folder.enabled` and one `public_folder.subfolders.*.enabled` flag. For
+`column_config`, every column needs `description` and `tests`; date/datetime
+columns need strftime `format` values such as `%Y-%m-%d` or
+`%Y-%m-%d %H:%M:%S`, not display masks such as `YYYY-MM-DD`.
+
 For data submission:
 
 1. Describe the spec.

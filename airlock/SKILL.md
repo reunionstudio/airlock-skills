@@ -183,6 +183,20 @@ JSON. Ask yourself, and ask the human when the answer changes the data model:
    expectations, and delegation. These control structures can usually be altered
    later more safely than the core data shape.
 
+Choose the creation surface before composing JSON. `airlock.admin.create_spec`
+accepts a full spec config with `column_config`, `file_rules`, `guest_access`,
+and related sections. `airlock.user.create_spec_from_template` starts from an
+assigned or public template and should receive narrow editable overrides, usually
+dot-path keys such as `{"core_config.description": "FY26"}`. Do not paste a full
+admin config into `spec_config_overrides` unless the template rules explicitly
+allow those paths.
+
+Date and datetime column `format` values use strftime tokens such as
+`%Y-%m-%d` or `%Y-%m-%d %H:%M:%S`; display masks such as `YYYY-MM-DD` are
+invalid. If `column_config` still fails after required `description` and `tests`
+fields are present, check date/datetime formats before changing column types or
+removing variant tests.
+
 For observation specs, prefer typed columns for the observed object's identity,
 source URL or source key, observed/captured timestamp, observer-facing category,
 and business status. Use Airlock load metadata for submission audit only; do not
@@ -340,64 +354,6 @@ Convert records JSON to CSV locally only for flat specs or specs with declared
 `variant` columns for nested values. Local conversion is a convenience bridge;
 Airlock validation and authorization in Snowflake remain authoritative.
 
-# Governed Posts Demo
-
-Some Airlock demos include a materialized file spec named `posts` and a
-read-only reference spec named `published_posts`. This demonstrates the current
-file-spec model for small governed business signals: users and agents append
-posts into a shared governed folder, while readers query the materialized table
-through reference-spec access.
-
-This is also the day-one pattern for generated apps and watcher agents: write
-through a governed spec, materialize the official records, then read back
-through a reference spec instead of querying Airlock-owned tables directly.
-
-For a demo agent assigned the Airlock role `agent`, use only user procedures:
-
-```sql
-CALL airlock.user.list_my_roles();
-CALL airlock.user.list_my_specs('agent', TRUE);
-CALL airlock.user.describe_spec('posts', 'agent', TRUE);
-CALL airlock.user.describe_spec('published_posts', 'agent', TRUE);
-```
-
-To submit a post, describe `posts` first, build records JSON from the declared
-columns, convert it locally to CSV `file_content`, then validate and load to the
-shared append path:
-
-```sql
-CALL airlock.user.validate_data(
-  spec_name => 'posts',
-  file_content => '<csv_from_posts_records_json>',
-  in_app_role => 'agent',
-  path_scope => 'public/append_access'
-);
-
-CALL airlock.user.load_data(
-  spec_name => 'posts',
-  file_content => '<csv_from_posts_records_json>',
-  filename => '<logical_post_file_name>',
-  in_app_role => 'agent',
-  path_scope => 'public/append_access'
-);
-```
-
-To read the governed post stream, use the reference spec:
-
-```sql
-CALL airlock.user.select_reference_data(
-  spec_name => 'published_posts',
-  object_key => 'posts',
-  row_limit => 100,
-  in_app_role => 'agent'
-);
-```
-
-If `agent` is denied, first check whether `list_my_roles()` actually returns
-`agent` for the Snowflake user in that connection. Do not switch to
-`airlock.admin.*` for this demo; missing `agent` is an assignment or connection
-identity issue, not an admin-discovery issue.
-
 # Delegation
 
 Delegation is not impersonation. Use `airlock_list_my_delegations` or
@@ -431,34 +387,9 @@ Pair every flexible `variant` column with explicit Airlock validation such as
 `variant_shape` rules or documented `field_path` checks when the installed API
 supports them. This lets admins alter the spec config later to accept and
 validate new nested keys without changing the physical data structure. Do not
-use `variant` as an unvalidated junk drawer for required business facts.
-
-Minimal spec fragment:
-
-```json
-{
-  "column_config": [
-    {"name": "record_id", "type": "string", "tests": ["not_null"]},
-    {"name": "amount", "type": "number", "tests": []},
-    {"name": "processing_context", "type": "variant", "tests": []}
-  ],
-  "rules": [
-    {
-      "type": "variant_shape",
-      "field": "processing_context",
-      "allowed_root_keys": ["source", "policy", "notes"],
-      "paths": [
-        {"json_path": "$.source.system", "type": "string", "required": false},
-        {"json_path": "$.policy.requires_review", "type": "boolean", "required": false},
-        {"json_path": "$.notes.reason", "type": "string", "required": false}
-      ]
-    }
-  ]
-}
-```
-
-Use `field_path` rules when a validation, such as a reference lookup, needs to
-target a scalar nested inside a `variant` column.
+use `variant` as an unvalidated junk drawer for required business facts. For a
+copyable full config, use `templates/spec-config-with-variant-context.json`;
+for deeper design tradeoffs, read `references/spec-design.md`.
 
 # Expectation Work
 
@@ -510,6 +441,18 @@ exception count, and Airlock reason code.
   assignment, publication state, guest access, and license state.
 - Template not assigned: ask an app admin to assign the template to the Airlock
   role or make the template public.
+- `CREATE_SPEC_FAILED` with `VALIDATION.invalid_tabs`: those values are failed
+  validation sections, not unknown JSON keys. If only `column_config` and
+  `guest_access` appear, do not infer a duplicate spec name; duplicate names
+  normally fail under `core`. `full_access`, `append_access`, and `read_access`
+  are valid guest access levels. Check column entries for required
+  `description`, `tests`, and date/datetime strftime `format` values such as
+  `%Y-%m-%d`; `YYYY-MM-DD` is invalid. Check enabled guest-access directory
+  settings and role names. If
+  `isolated_directories_enabled` is false, `guest_roles[].access_level` does not
+  enable shared access by itself; set `public_folder.enabled` and one
+  `public_folder.subfolders.*.enabled` flag, or enable isolated directories with
+  `isolated_access_level`.
 - `ATTACHMENT_REQUIRED`: provide an attachment in `load_data` or use an allowed
   attachment sequence.
 - `ACCESS_DENIED_WORKFLOW_STATE`: inspect workflow state and available actions;
@@ -523,16 +466,17 @@ Read only the relevant file when needed:
 - `examples/draft-spec-from-template.md` for safe draft-spec creation.
 - `examples/triage-expectation-work.md` for cadence/order work checks.
 - `references/procedure-cheat-sheet.md` for common Airlock procedure patterns
-  and when to query installed documentation.
+  and when to query installed documentation, including demo posts calls.
 - `references/spec-design.md` for spec structure, spec-creation questions,
   observation metadata, attachments, variant fields, and advanced validation
   rules.
 - `references/agent-architecture-patterns.md` for human/agent process design,
   dedicated agent pairing, workflow pushback, polling, published reference
   specs, and chained watcher/reviewer patterns.
-- `templates/spec-config-minimal.json` for a minimal spec-config starting point.
+- `templates/spec-config-minimal.json` for a minimal full admin spec-config
+  starting point, not a create-from-template override payload.
 - `templates/spec-config-with-variant-context.json` for a governed flexible
-  context column with `variant_shape` validation.
+  context column with `variant_shape` validation in a full admin spec config.
 - `references/marketplace-install-and-security.md` for Marketplace install,
   privileges, data retention, uninstall, and reinstall guidance.
 - `references/architecture-playbook.md` for architecture philosophy,

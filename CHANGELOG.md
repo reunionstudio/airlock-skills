@@ -5,6 +5,21 @@ This project follows SemVer-style GitHub releases. Tags should use the
 
 ## Unreleased
 
+## 0.4.1 - 2026-06-13
+
+- Improved the CoCo Airlock skill for `CREATE_SPEC_FAILED` troubleshooting:
+  `VALIDATION.invalid_tabs` is described as failed validation sections, not
+  unknown JSON keys.
+- Documented validator-correct spec creation shapes for CoCo, including
+  canonical CSV `file_rules`, guest-access public folder requirements, and
+  strftime date/datetime formats such as `%Y-%m-%d` instead of invalid display
+  masks such as `YYYY-MM-DD`.
+- Updated bundled CoCo spec templates to use the canonical `airlock/` package
+  folder, validator-shaped column configs, canonical CSV file-rule keys, and a
+  copyable date column with a strftime format.
+- Kept the root skill lean by moving duplicated detailed examples into bundled
+  references while preserving the CoCo-critical blocker guidance in `SKILL.md`.
+
 ## 0.4.0 - 2026-06-12
 
 - Renamed the canonical skill directory from `airlock_skills/` to `airlock/`
